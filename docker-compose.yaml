@@ -1,0 +1,36 @@
+services:
+  app:
+    container_name: quick_app_v1.0.0
+    image: quick_app:1.0.0
+    build:
+      context: .
+    env_file:
+      - ".env.docker"
+    ports:
+      - 8888:8888
+    networks:
+      - "app_net"
+    depends_on:
+      - postgres
+    command: "poetry run python ./src/gunicorn/run.py"
+    volumes:
+      - ./logs:/app/logs
+
+  postgres:
+    container_name: quick_postgres_db
+    image: "postgres:17"
+    ports:
+      - 6432:5432
+    volumes:
+      - pg_db_data:/var/lib/postgresql/data
+    networks:
+      - "app_net"
+    env_file:
+      - ".env.postgres"
+
+volumes:
+  pg_db_data:
+
+networks:
+  app_net:
+    driver: bridge
