@@ -1,7 +1,7 @@
 services:
   app:
-    container_name: quick_app_v1.0.0
-    image: quick_app:1.0.0
+    container_name: feed_fusion_v1.0.0
+    image: feed_fusion:1.0.0
     build:
       context: .
     env_file:
@@ -9,7 +9,7 @@ services:
     ports:
       - 8888:8888
     networks:
-      - "app_net"
+      - "ffusion_net"
     depends_on:
       - postgres
     command: "poetry run python ./src/gunicorn/run.py"
@@ -17,20 +17,35 @@ services:
       - ./logs:/app/logs
 
   postgres:
-    container_name: quick_postgres_db
+    container_name: ffusion_db
     image: "postgres:17"
     ports:
       - 6432:5432
     volumes:
-      - pg_db_data:/var/lib/postgresql/data
+      - ffusion_pg_db_data:/var/lib/postgresql/data
     networks:
-      - "app_net"
+      - "ffusion_net"
     env_file:
       - ".env.postgres"
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    hostname: rabbitmq
+    container_name: ffusion_rabbit
+    networks:
+      - "ffusion_net"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - ".env.rabbitmq"
+    volumes:
+      - ffusion_rmq_data:/var/lib/rabbitmq
+
 volumes:
-  pg_db_data:
+  ffusion_rmq_data:
+  ffusion_pg_db_data:
 
 networks:
-  app_net:
+  ffusion_net:
     driver: bridge

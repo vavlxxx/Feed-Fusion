@@ -19,7 +19,6 @@ from src.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    configurate_logging()
     logger = get_logger("src")
 
     await DBHealthChecker(engine=engine).check()
@@ -29,6 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Shutting down...")
 
 
+configurate_logging()
 app = FastAPI(
     title=settings.TITLE,
     lifespan=lifespan,

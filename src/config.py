@@ -7,13 +7,13 @@ BASE_DIR = Path(__file__).parent.parent
 
 
 class Settings(BaseSettings):
-    TITLE: str = "FastAPI Quick Start"
+    TITLE: str = "Feed Fusion"
     MODE: Literal["TEST", "DEV", "PROD"] = "TEST"
 
     DB_HOST: str
     DB_USER: str
     DB_NAME: str
-    TEST_DB_NAME: str = "shop"
+    TEST_DB_NAME: str = "test_ffusion_db"
     DB_PORT: int
     DB_PASSWORD: str
 
@@ -46,6 +46,22 @@ class Settings(BaseSettings):
     GUNICORN_WORKERS_CLASS: str = "uvicorn.workers.UvicornWorker"
     GUNICORN_ERROR_LOG: str | None = "-"
     GUNICORN_ACCESS_LOG: str | None = "-"
+
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
+    @property
+    def redis_url(self):
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}"
+
+    RABBIT_USER: str
+    RABBIT_PASSWORD: str
+    RABBIT_HOST: str
+    RABBIT_PORT: int
+
+    @property
+    def rabbit_url(self):
+        return f"amqp://{self.RABBIT_USER}:{self.RABBIT_PASSWORD}@{self.RABBIT_HOST}:{self.RABBIT_PORT}"
 
     model_config = SettingsConfigDict(
         env_file=(

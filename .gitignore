@@ -222,3 +222,5 @@ logs/
 .env.test
 .env.docker
 .env.postgres
+.env.rabbitmq
+celerybeat*
