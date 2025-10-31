@@ -1,6 +1,6 @@
+from datetime import datetime, timezone
 from typing import Sequence
 
-from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from src.schemas.news import AddNewsDTO
@@ -19,7 +19,7 @@ class NewsRepo(BaseRepo):
             .values(data.model_dump())
             .on_conflict_do_update(
                 constraint="uq_news_content_hash",
-                set_={"updated_at": func.now()},
+                set_={"updated_at": datetime.now(timezone.utc).replace(tzinfo=None)},
             )
             .returning(self.model.id)
         )

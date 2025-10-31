@@ -23,13 +23,17 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         "news",
-        sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column("link", sa.String(length=255), nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("channel_id", sa.Integer(), nullable=False),
         sa.Column("content_hash", sa.String(length=255), nullable=False),
-        sa.Column("published", sa.String(length=255), nullable=False),
+        sa.Column("link", sa.String(length=255), nullable=False),
+        sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("summary", sa.Text(), nullable=False),
         sa.Column("source", sa.String(length=255), nullable=False),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("image", sa.String(), nullable=True),
+        sa.Column(
+            "published", sa.DateTime(), server_default=sa.text("now()"), nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(),
@@ -44,6 +48,13 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_news")),
         sa.UniqueConstraint("content_hash", name=op.f("uq_news_content_hash")),
+        sa.ForeignKeyConstraint(
+            ["channel_id"],
+            ["channels.id"],
+            name=op.f("fk_news_channel_id_channels"),
+            ondelete="CASCADE",
+            onupdate="CASCADE",
+        ),
     )
 
 

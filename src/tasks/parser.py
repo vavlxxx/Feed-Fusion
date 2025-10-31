@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import feedparser
+from datetime import datetime, timezone
 
 from src.schemas.news import ParsedNewsDTO
 from src.tasks.app import celery_app
@@ -20,6 +21,14 @@ def get_image_from_links(links: list[dict[str, str]]):
     for link in links:
         if "image" in link.get("type", "").casefold():
             return link.get("href", None)
+
+
+def parse_date(date: str):
+    return (
+        datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %z")
+        .astimezone(timezone.utc)
+        .replace(tzinfo=None)
+    )
 
 
 async def parse_rss_feeds():
@@ -43,11 +52,11 @@ async def parse_rss_feeds():
                     link=entry.get("link", "Отсутствует"),
                     summary=entry.get("summary", "Отсутствует"),
                     source=source_name,
-                    published=entry.get("published", "Нет данных"),
+                    published=parse_date(entry.get("published")),
+                    channel_id=channel.id,
                 )
             )
             logging.info(f"Sent to queue: %s", entry.get("title", "Без заголовка")[:60])
 
-        logging.info(result)
         if result:
             process_news.delay([obj.model_dump() for obj in result])
