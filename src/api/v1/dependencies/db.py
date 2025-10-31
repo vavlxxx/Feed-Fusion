@@ -3,7 +3,7 @@ from typing import Annotated, Any, AsyncGenerator
 from fastapi import Depends
 
 from src.db import sessionmaker, sessionmaker_null_pool
-from utils.db_tools import DBManager
+from src.utils.db_tools import DBManager
 
 
 async def get_db() -> AsyncGenerator[DBManager, Any]:

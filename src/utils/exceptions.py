@@ -39,3 +39,11 @@ class ApplicationHTTPError(HTTPException):
         if detail is not None:
             self.detail = detail
         super().__init__(detail=self.detail, status_code=self.status)
+
+
+class ValueOutOfRangeHTTPError(ApplicationHTTPError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.detail = "Значение выходит за допустимые пределы"

@@ -23,7 +23,7 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
             content_hash: str = hashlib.sha256(news_item["link"].encode()).hexdigest()
             data = AddNewsDTO(**news_item, content_hash=content_hash)
             try:
-                await db.news.add(data)
+                await db.news.add_news(data)
                 await db.commit()
                 logger.info("Saved into DB: %s", news_item["title"][:50])
             except Exception as exc:

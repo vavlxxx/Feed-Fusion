@@ -5,7 +5,7 @@ import pytest
 from src.db import engine_null_pool
 from src.api.v1.dependencies.db import get_db_with_null_pool
 from src.config import settings
-from utils.db_tools import DBManager
+from src.utils.db_tools import DBManager
 from src.models import *  # noqa: F403
 from src.models.base import Base
 from src.utils.db_tools import DBHealthChecker

@@ -3,14 +3,19 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+
 sys.path.append(str(Path(__file__).parent.parent))
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+
 from src.db import engine
 from src.api import router as main_router
+from src.utils.redis_manager import redis_manager
 from src.utils.logging import configurate_logging, get_logger
 from src.api.docs import router as docs_router
 from src.utils.db_tools import DBHealthChecker
@@ -23,8 +28,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await DBHealthChecker(engine=engine).check()
 
+    await redis_manager.connect()
+    logger.info("Successfully connected to Redis!")
+
+    FastAPICache.init(RedisBackend(redis_manager._redis), prefix="fastapi-cache")
+    logger.info("FastAPI Cache has been initialized!")
+
     logger.info("All checks passed!")
     yield
+
+    await redis_manager.close()
+    logger.info("Connection to Redis has been closed")
+
     logger.info("Shutting down...")
 
 
