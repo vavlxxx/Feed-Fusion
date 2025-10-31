@@ -1,6 +1,7 @@
 import feedparser
-from src.tasks.app import celery_app
 
+from src.tasks.app import celery_app
+from src.tasks.processor import process_news_item
 
 RSS_FEEDS: tuple[str, ...] = (
     "https://rssexport.rbc.ru/rbcnews/news/30/full.rss",
@@ -11,31 +12,30 @@ RSS_FEEDS: tuple[str, ...] = (
 
 @celery_app.task(name="parse_feed")
 def parse_rss_feeds():
+    """Парсит RSS-ленты и отправляет каждую новость в очередь на обработку"""
     for feed_url in RSS_FEEDS:
         print(f"\n{'='*80}")
         print(f"Парсинг ленты: {feed_url}")
         print(f"{'='*80}\n")
 
-        # Парсим RSS-ленту
         feed = feedparser.parse(feed_url)
 
-        # Информация об источнике
-        print(f"Источник: {feed.feed.get('title', 'Неизвестно')}")
-        print(f"Описание: {feed.feed.get('description', 'Нет описания')}")
+        source_name = feed.feed.get("title", "Неизвестно")
+        print(f"Источник: {source_name}")
         print(f"Количество новостей: {len(feed.entries)}\n")
 
-        # Выводим первые 5 новостей
-        for i, entry in enumerate(feed.entries[:5], 1):
-            print(f"--- Новость {i} ---")
-            print(f"Заголовок: {entry.get('title', 'Без заголовка')}")
-            print(f"Ссылка: {entry.get('link', 'Нет ссылки')}")
-            print(f"Дата: {entry.get('published', 'Дата не указана')}")
+        # Отправляем каждую новость на обработку в отдельной задаче
+        for entry in feed.entries:
+            news_item = {
+                "title": entry.get("title", "Без заголовка"),
+                "link": entry.get("link", ""),
+                "published": entry.get("published", ""),
+                "summary": entry.get("summary", ""),
+                "source": source_name,
+                "feed_url": feed_url,
+            }
 
-            # Краткое описание (если есть)
-            summary = entry.get("summary", "")
-            if summary:
-                # Обрезаем до 200 символов
-                summary = summary[:200] + "..." if len(summary) > 200 else summary
-                print(f"Описание: {summary}")
-
-            print()
+            # Отправляем в очередь через Celery
+            # Это асинхронный вызов - задача ставится в очередь
+            process_news_item.delay(news_item)
+            print(f"✓ Отправлено в очередь: {news_item['title'][:60]}...")
