@@ -73,3 +73,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# RSS_FEEDS: tuple[str, ...] = (
+#     "https://rssexport.rbc.ru/rbcnews/news/30/full.rss",
+#     "https://russian.rt.com/rss",
+#     "https://tass.ru/rss/v2.xml",
+# )

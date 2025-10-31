@@ -12,4 +12,6 @@ class Base(DeclarativeBase):
     @declared_attr.directive
     def __tablename__(cls) -> str:
         title = transform_titles_to_snake_case(cls.__name__)
-        return f"{title}s"
+        if not title.endswith("s"):
+            title = f"{title}s"
+        return title

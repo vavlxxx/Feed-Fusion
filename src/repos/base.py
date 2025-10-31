@@ -16,7 +16,6 @@ from src.utils.exceptions import (
 
 class BaseRepo(Generic[ModelType, SchemaType]):
     model: type[ModelType]
-    schema: type[SchemaType]
     mapper = DataMapper
 
     def __init__(self, session: AsyncSession) -> None:
@@ -30,7 +29,7 @@ class BaseRepo(Generic[ModelType, SchemaType]):
             if exc.orig and isinstance(exc.orig.__cause__, DataError):
                 raise ValueOutOfRangeError(detail=exc.orig.__cause__.args[0]) from exc
             raise exc
-        return [self.schema.model_validate(obj) for obj in result.scalars().all()]
+        return [self.mapper.map_to_domain_entity(obj) for obj in result.scalars().all()]
 
     async def get_all(self) -> list[SchemaType]:
         return await self.get_all_filtered()
@@ -47,7 +46,7 @@ class BaseRepo(Generic[ModelType, SchemaType]):
 
         if obj is None:
             return None
-        return self.schema.model_validate(obj)
+        return self.mapper.map_to_domain_entity(obj)
 
     async def get_one(self, *filter, **filter_by) -> SchemaType:
         query = select(self.model).filter(*filter).filter_by(**filter_by)
@@ -61,7 +60,7 @@ class BaseRepo(Generic[ModelType, SchemaType]):
                 raise ValueOutOfRangeError(detail=exc.orig.__cause__.args[0]) from exc
             raise exc
 
-        return self.schema.model_validate(obj)
+        return self.mapper.map_to_domain_entity(obj)
 
     async def add_bulk(self, data: Sequence[BaseDTO]) -> None:
         add_obj_stmt = insert(self.model).values([item.model_dump() for item in data])
@@ -81,13 +80,13 @@ class BaseRepo(Generic[ModelType, SchemaType]):
             raise exc
 
         obj = result.scalars().one()
-        return self.schema.model_validate(obj)
+        return self.mapper.map_to_domain_entity(obj)
 
     async def get_one_or_add(self, data: BaseDTO, **params) -> SchemaType:
         obj = await self.get_one_or_none(**data.model_dump())
         if obj is None:
             return await self.add(data, **params)
-        return self.schema.model_validate(obj)
+        return self.mapper.map_to_domain_entity(obj)
 
     async def edit(
         self,

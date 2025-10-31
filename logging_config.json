@@ -18,6 +18,16 @@
             "backupCount": 3,
             "mode": "a",
             "encoding": "utf-8"
+        },
+        "celery_file":{
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": "logs/celery_app.log",
+            "formatter": "detailed",
+            "level": "INFO",
+            "maxBytes": 1048576,
+            "backupCount": 3,
+            "mode": "a",
+            "encoding": "utf-8"
         }
     },
     "loggers": {
@@ -53,6 +63,16 @@
         },
         "gunicorn.access": {
             "handlers": ["stdout","main_file"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "src.tasks": {
+            "handlers": ["stdout","celery_file"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "celery": {
+            "handlers": ["stdout","celery_file"],
             "level": "INFO",
             "propagate": false
         }

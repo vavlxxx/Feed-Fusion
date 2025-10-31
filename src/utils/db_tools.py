@@ -4,6 +4,8 @@ from typing import Self
 from sqlalchemy import inspect, Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from src.repos.news import NewsRepo
+from src.repos.channels import ChannelRepo
 from src.models.base import Base
 from src.utils.exceptions import MissingTablesError
 
@@ -17,6 +19,8 @@ class DBManager:
 
     async def __aenter__(self) -> Self:
         self.session: AsyncSession = self.session_factory()
+        self.channels = ChannelRepo(self.session)
+        self.news = NewsRepo(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:

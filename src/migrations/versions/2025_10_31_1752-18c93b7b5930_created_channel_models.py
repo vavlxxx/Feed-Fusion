@@ -1,8 +1,8 @@
-"""created news channel model
+"""created channel models
 
-Revision ID: 70c638e32068
+Revision ID: 18c93b7b5930
 Revises:
-Create Date: 2025-10-31 13:30:27.718900
+Create Date: 2025-10-31 17:52:35.669086
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = "70c638e32068"
+revision: str = "18c93b7b5930"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -40,6 +40,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_channels")),
+        sa.UniqueConstraint("link", name=op.f("uq_channels_link")),
     )
 
 

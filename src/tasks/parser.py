@@ -1,41 +1,53 @@
+import asyncio
+import logging
 import feedparser
 
+from src.schemas.news import ParsedNewsDTO
 from src.tasks.app import celery_app
-from src.tasks.processor import process_news_item
+from src.tasks.processor import process_news
+from src.utils.db_tools import DBManager
+from src.db import sessionmaker_null_pool
 
-RSS_FEEDS: tuple[str, ...] = (
-    "https://rssexport.rbc.ru/rbcnews/news/30/full.rss",
-    "https://russian.rt.com/rss",
-    "https://tass.ru/rss/v2.xml",
-)
+logger = logging.getLogger("src.tasks.parser")
 
 
-@celery_app.task(name="parse_feed")
-def parse_rss_feeds():
-    """Парсит RSS-ленты и отправляет каждую новость в очередь на обработку"""
-    for feed_url in RSS_FEEDS:
-        print(f"\n{'='*80}")
-        print(f"Парсинг ленты: {feed_url}")
-        print(f"{'='*80}\n")
+@celery_app.task(name="parse_rss")
+def parse_rss():
+    asyncio.run(parse_rss_feeds())
 
-        feed = feedparser.parse(feed_url)
 
-        source_name = feed.feed.get("title", "Неизвестно")
-        print(f"Источник: {source_name}")
-        print(f"Количество новостей: {len(feed.entries)}\n")
+def get_image_from_links(links: list[dict[str, str]]):
+    for link in links:
+        if "image" in link.get("type", "").casefold():
+            return link.get("href", None)
 
-        # Отправляем каждую новость на обработку в отдельной задаче
+
+async def parse_rss_feeds():
+    logging.info("Started parsing...")
+    async with DBManager(session_factory=sessionmaker_null_pool) as db:
+        channels = await db.channels.get_all()
+
+    for channel in channels:
+        logger.info("Feed %s", channel.link)
+        feed = feedparser.parse(channel.link)
+        source_name = feed.feed.get("title", "Неизвестный источник")
+        logger.info("Source: %s", source_name)
+        logger.info("News quantity: %s", len(feed.entries))
+
+        result = []
         for entry in feed.entries:
-            news_item = {
-                "title": entry.get("title", "Без заголовка"),
-                "link": entry.get("link", ""),
-                "published": entry.get("published", ""),
-                "summary": entry.get("summary", ""),
-                "source": source_name,
-                "feed_url": feed_url,
-            }
+            result.append(
+                ParsedNewsDTO(
+                    image=get_image_from_links(entry.get("links", [])),
+                    title=entry.get("title", "Без заголовка"),
+                    link=entry.get("link", "Отсутствует"),
+                    summary=entry.get("summary", "Отсутствует"),
+                    source=source_name,
+                    published=entry.get("published", "Нет данных"),
+                )
+            )
+            logging.info(f"Sent to queue: %s", entry.get("title", "Без заголовка")[:60])
 
-            # Отправляем в очередь через Celery
-            # Это асинхронный вызов - задача ставится в очередь
-            process_news_item.delay(news_item)
-            print(f"✓ Отправлено в очередь: {news_item['title'][:60]}...")
+        logging.info(result)
+        if result:
+            process_news.delay([obj.model_dump() for obj in result])

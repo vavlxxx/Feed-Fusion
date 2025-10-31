@@ -1,17 +1,31 @@
+import json
+import logging.config
+from pathlib import Path
+
 from celery import Celery
+from celery.signals import setup_logging
+
 from src.config import settings
+
+
+@setup_logging.connect
+def config_loggers(*args, **kwargs):
+    basepath = Path(__file__).resolve().parent.parent.parent
+    with open(basepath / "logging_config.json", "r") as f:
+        config = json.load(f)
+    logging.config.dictConfig(config)
+
 
 celery_app = Celery(
     "tasks",
     broker=settings.rabbit_url,
-    backend=settings.redis_url,  # Добавляем backend для отслеживания результатов
+    # backend=settings.redis_url,
     include=[
         "src.tasks.parser",
-        "src.tasks.processor",  # Добавляем модуль обработчика
+        "src.tasks.processor",
     ],
 )
 
-# Настройки Celery
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
@@ -19,14 +33,13 @@ celery_app.conf.update(
     timezone="Asia/Almaty",
     enable_utc=True,
     task_track_started=True,
-    task_acks_late=True,  # Подтверждение после выполнения (важно для надёжности)
-    worker_prefetch_multiplier=1,  # Воркер берёт по одной задаче (для равномерной нагрузки)
+    task_acks_late=True,
+    worker_prefetch_multiplier=1,
 )
 
-# Расписание для периодического парсинга
 celery_app.conf.beat_schedule = {
-    "parse_feed": {
-        "task": "parse_feed",
-        "schedule": 60.0,  # Каждую минуту
+    "parse_rss": {
+        "task": "parse_rss",
+        "schedule": 60.0,
     }
 }
