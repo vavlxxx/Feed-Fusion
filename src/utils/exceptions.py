@@ -23,8 +23,16 @@ class ObjectNotFoundError(ApplicationError):
     detail = "Object not found"
 
 
-class ObjectAlreadyExistsError(ApplicationError):
+class ChannelNotFoundError(ObjectNotFoundError):
+    pass
+
+
+class ObjectExistsError(ApplicationError):
     detail = "Object already exists"
+
+
+class ChannelExistsError(ObjectExistsError):
+    pass
 
 
 class ValueOutOfRangeError(ApplicationError):
@@ -47,3 +55,11 @@ class ValueOutOfRangeHTTPError(ApplicationHTTPError):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.detail = "Значение выходит за допустимые пределы"
+
+
+class ChannelNotFoundHTTPError(ApplicationHTTPError):
+    status_code = status.HTTP_404_NOT_FOUND
+
+
+class ChannelExistsErrorHTTPError(ApplicationHTTPError):
+    status_code = status.HTTP_409_CONFLICT

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.repos.mappers.base import DataMapper, ModelType, SchemaType
 from src.schemas.base import BaseDTO
 from src.utils.exceptions import (
-    ObjectAlreadyExistsError,
+    ObjectExistsError,
     ObjectNotFoundError,
     ValueOutOfRangeError,
 )
@@ -76,7 +76,7 @@ class BaseRepo(Generic[ModelType, SchemaType]):
             result = await self.session.execute(add_obj_stmt)
         except IntegrityError as exc:
             if exc.orig and isinstance(exc.orig.__cause__, UniqueViolationError):
-                raise ObjectAlreadyExistsError from exc
+                raise ObjectExistsError from exc
             raise exc
 
         obj = result.scalars().one()
@@ -110,7 +110,7 @@ class BaseRepo(Generic[ModelType, SchemaType]):
             await self.session.execute(edit_obj_stmt)
         except IntegrityError as exc:
             if exc.orig and isinstance(exc.orig.__cause__, UniqueViolationError):
-                raise ObjectAlreadyExistsError from exc
+                raise ObjectExistsError from exc
             raise exc
         except DBAPIError as exc:
             if exc.orig and isinstance(exc.orig.__cause__, DataError):

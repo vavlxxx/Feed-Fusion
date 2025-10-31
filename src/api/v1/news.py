@@ -7,7 +7,7 @@ from src.api.v1.dependencies.db import DBDep
 from src.services.news import NewsService
 from src.utils.exceptions import ValueOutOfRangeError, ValueOutOfRangeHTTPError
 
-router = APIRouter(prefix="/news")
+router = APIRouter(prefix="/news", tags=["News"])
 
 
 @cache(expire=300)
