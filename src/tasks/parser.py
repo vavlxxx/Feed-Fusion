@@ -45,12 +45,15 @@ async def parse_rss_feeds():
 
         result = []
         for entry in feed.entries:
+            raw_summary = entry.get("summary")
+            summary = (raw_summary.strip() if raw_summary else "") or "Отсутствует"
+
             result.append(
                 ParsedNewsDTO(
                     image=get_image_from_links(entry.get("links", [])),
                     title=entry.get("title", "Без заголовка"),
                     link=entry.get("link", "Отсутствует"),
-                    summary=entry.get("summary", "Отсутствует"),
+                    summary=summary,
                     source=source_name,
                     published=parse_date(entry.get("published")),
                     channel_id=channel.id,

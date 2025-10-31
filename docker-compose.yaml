@@ -16,6 +16,27 @@ services:
     volumes:
       - ./logs:/app/logs
 
+  celery_worker:
+    image: feed_fusion:1.0.0
+    container_name: ffusion_celery_worker
+    env_file:
+      - ".env.docker"
+    networks:
+      - "ffusion_net"
+    depends_on:
+      - app
+    command: "poetry run celery --app=src.tasks.app:celery_app worker -l INFO"
+  celery_beat:
+    image: feed_fusion:1.0.0
+    container_name: ffusion_celery_beat
+    env_file:
+      - ".env.docker"
+    networks:
+      - "ffusion_net"
+    depends_on:
+      - app
+    command: "poetry run celery --app=src.tasks.app:celery_app beat -l INFO"
+
   postgres:
     container_name: ffusion_db
     image: "postgres:17"
