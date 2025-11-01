@@ -25,7 +25,7 @@ services:
       - "ffusion_net"
     depends_on:
       - app
-    # command: "poetry run celery --app=src.tasks.app:celery_app worker -l INFO"
+    command: "poetry run celery --app=src.tasks.app:celery_app worker -l INFO"
 
   celery_beat:
     image: feed_fusion:1.0.0
@@ -36,7 +36,7 @@ services:
       - "ffusion_net"
     depends_on:
       - app
-    # command: "poetry run celery --app=src.tasks.app:celery_app beat -l INFO"
+    command: "poetry run celery --app=src.tasks.app:celery_app beat -l INFO"
 
   postgres:
     container_name: ffusion_db

@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 
-import bcrypt
-import jwt
 from fastapi import HTTPException, Response
+import jwt
 from jwt.exceptions import ExpiredSignatureError
 
+from src.utils.hashing import HashManager
 from src.schemas.auth import UserWithPasswordDTO
 from src.config import settings
 from src.schemas.auth import (
@@ -28,21 +28,9 @@ from src.utils.exceptions import (
 )
 
 
-class AuthService(BaseService):
+class AuthService(BaseService, HashManager):
     def __init__(self, db_manager: DBManager | None = None) -> None:
         super().__init__(db_manager=db_manager)
-
-    def _hash_data(self, password: str) -> str:
-        salt = bcrypt.gensalt()
-        pwd_bytes: bytes = password.encode(encoding="utf-8")
-        hashed_pwd_bytes = bcrypt.hashpw(pwd_bytes, salt)
-        return hashed_pwd_bytes.decode(encoding="utf-8")
-
-    def _verify_data(self, password: str, hashed_password: str) -> bool:
-        return bcrypt.checkpw(
-            password=password.encode(encoding="utf-8"),
-            hashed_password=hashed_password.encode(encoding="utf-8"),
-        )
 
     def _generate_token(
         self,
@@ -106,7 +94,7 @@ class AuthService(BaseService):
         except ObjectNotFoundError as exc:
             raise InvalidLoginDataError from exc
 
-        is_same = self._verify_data(login_data.password, user.hashed_password)
+        is_same = self._verify_password(login_data.password, user.hashed_password)
         if not user or not is_same:
             raise InvalidLoginDataError
 
@@ -125,7 +113,7 @@ class AuthService(BaseService):
         )
         refresh_token = self.create_refresh_token(payload={"sub": f"{user.id}"})
 
-        hashed_refresh_token = self._hash_data(refresh_token.token)
+        hashed_refresh_token = self._hash_token(refresh_token.token)
 
         token_to_update = TokenAddDTO(
             hashed_data=hashed_refresh_token,
@@ -151,7 +139,7 @@ class AuthService(BaseService):
         )
 
     async def register_user(self, register_data: RegisterData) -> UserDTO:
-        hashed_password = self._hash_data(register_data.password)
+        hashed_password = self._hash_password(register_data.password)
         user_to_add = UserAddDTO(
             hashed_password=hashed_password,
             **register_data.model_dump(exclude={"password"}),

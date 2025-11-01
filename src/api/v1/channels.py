@@ -18,7 +18,7 @@ router = APIRouter(prefix="/channels", tags=["Channels"])
 @router.get("/")
 async def get_channels(
     db: DBDep,
-) -> dict[str, str | list[ChannelDTO]]:
+) -> dict[str, str | int | list[ChannelDTO]]:
     channels = await ChannelService(db).get_channels_list()
     return {
         "message": "Channels found successfully",
