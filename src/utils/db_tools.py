@@ -4,6 +4,7 @@ from typing import Self
 from sqlalchemy import inspect, Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from src.repos.auth import AuthRepo, TokenRepo
 from src.repos.news import NewsRepo
 from src.repos.channels import ChannelRepo
 from src.models.base import Base
@@ -21,6 +22,8 @@ class DBManager:
         self.session: AsyncSession = self.session_factory()
         self.channels = ChannelRepo(self.session)
         self.news = NewsRepo(self.session)
+        self.auth = AuthRepo(self.session)
+        self.tokens = TokenRepo(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:

@@ -224,3 +224,4 @@ logs/
 .env.postgres
 .env.rabbitmq
 celerybeat*
+*.pem

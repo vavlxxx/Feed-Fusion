@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -62,6 +63,12 @@ class Settings(BaseSettings):
     @property
     def rabbit_url(self):
         return f"amqp://{self.RABBIT_USER}:{self.RABBIT_PASSWORD}@{self.RABBIT_HOST}:{self.RABBIT_PORT}"
+
+    JWT_EXPIRE_DELTA_ACCESS: timedelta = timedelta(minutes=15)
+    JWT_EXPIRE_DELTA_REFRESH: timedelta = timedelta(days=30)
+    JWT_ALGORITHM: str = "RS256"
+    JWT_PRIVATE_KEY: Path = BASE_DIR / "creds" / "jwt-private.pem"
+    JWT_PUBLIC_KEY: Path = BASE_DIR / "creds" / "jwt-public.pem"
 
     model_config = SettingsConfigDict(
         env_file=(
