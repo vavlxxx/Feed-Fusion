@@ -6,6 +6,7 @@ from src.utils.exceptions import (
     ObjectNotFoundError,
     SubNotFoundError,
     EmptyChannelError,
+    MisingTelegramError,
 )
 
 
@@ -15,6 +16,10 @@ class SubsService(BaseService):
         return await self.db.subs.get_all_filtered(user_id=uid)
 
     async def create_subscription(self, uid: str, channel_id: int) -> str:
+        user = await self.db.auth.get_one(id=uid)
+        if user.telegram_id is None:
+            raise MisingTelegramError
+
         await ChannelService(self.db).get_channel_by_id(channel_id)
 
         _, last_news = await NewsService(self.db).get_news_list(

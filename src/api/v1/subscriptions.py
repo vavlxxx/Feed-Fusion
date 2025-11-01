@@ -13,6 +13,8 @@ from src.utils.exceptions import (
     ValueOutOfRangeHTTPError,
     SubNotFoundError,
     SubNotFoundHTTPError,
+    MisingTelegramError,
+    MisingTelegramErrorHTTPError,
 )
 
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
@@ -44,6 +46,8 @@ async def create_subscription(
         raise ChannelNotFoundHTTPError from exc
     except EmptyChannelError as exc:
         raise EmptyChannelHTTPError from exc
+    except MisingTelegramError as exc:
+        raise MisingTelegramErrorHTTPError from exc
     except ValueOutOfRangeError as exc:
         raise ValueOutOfRangeHTTPError(detail=exc.detail) from exc
     return {

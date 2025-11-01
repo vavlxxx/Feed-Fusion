@@ -39,6 +39,10 @@ class EmptyChannelError(ObjectNotFoundError):
     detail = "Channel is empty"
 
 
+class MisingTelegramError(ApplicationError):
+    detail = "Missing telegram id"
+
+
 class ValueOutOfRangeError(ApplicationError):
     detail = "Value out of integer range"
 
@@ -85,6 +89,11 @@ class SubNotFoundHTTPError(ApplicationHTTPError):
 class EmptyChannelHTTPError(ApplicationHTTPError):
     detail = "Channel is empty"
     status_code = status.HTTP_404_NOT_FOUND
+
+
+class MisingTelegramErrorHTTPError(ApplicationHTTPError):
+    detail = "Missing telegram id"
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 class ChannelNotFoundHTTPError(ApplicationHTTPError):
