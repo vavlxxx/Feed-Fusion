@@ -34,17 +34,26 @@ class NewsRepo(BaseRepo):
         self,
         limit: int,
         offset: int,
+        **filter_by,
     ) -> tuple[int, list[NewsDTO]]:
+        if filter_by.get("channel_id") is None:
+            del filter_by["channel_id"]
 
         total_count_subquery = (
-            select(func.count()).select_from(self.model).scalar_subquery()
+            select(func.count())
+            .select_from(self.model)
+            .filter_by(**filter_by)
+            .scalar_subquery()
         )
 
-        query = select(self.model, total_count_subquery.label("total_count")).order_by(
-            self.model.id.asc()
+        query = (
+            select(self.model, total_count_subquery.label("total_count"))
+            .filter_by(**filter_by)
+            .order_by(self.model.published.desc())
+            .limit(limit)
+            .offset(offset)
         )
 
-        query = query.limit(limit).offset(offset)
         try:
             result = await self.session.execute(query)
         except DBAPIError as exc:

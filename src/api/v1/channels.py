@@ -22,6 +22,7 @@ async def get_channels(
     channels = await ChannelService(db).get_channels_list()
     return {
         "message": "Channels found successfully",
+        "total": len(channels),
         "data": channels,
     }
 
