@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Response
 
-from src.api.v1.dependencies.auth import UidByRefresh, UsernameByAccess
+from src.api.v1.dependencies.auth import SubByRefresh, SubByAccess
 from src.api.v1.dependencies.db import DBDep
 from src.api.v1.responses.auth import (
     AUTH_LOGIN_RESPONSES,
@@ -73,7 +73,7 @@ async def register(
 )
 async def get_profile(
     db: DBDep,
-    username: UsernameByAccess,
+    uid: SubByAccess,
 ) -> UserDTO:
     """
     ## 🔒 Authorized user profile
@@ -81,7 +81,7 @@ async def get_profile(
     Example of data which can be stored in User model of database
     """
     try:
-        return await AuthService(db).get_profile(username=username)
+        return await AuthService(db).get_profile(uid=uid)
     except UserNotFoundError as exc:
         raise UserNotFoundHTTPError from exc
 
@@ -92,7 +92,7 @@ async def get_profile(
 )
 async def refresh(
     db: DBDep,
-    uid: UidByRefresh,
+    uid: SubByRefresh,
     response: Response,
 ) -> TokenResponseDTO:
     """

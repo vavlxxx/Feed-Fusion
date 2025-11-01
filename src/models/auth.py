@@ -12,10 +12,11 @@ from src.schemas.auth import TokenType
 
 class User(Base, PrimaryKeyMixin, TimingMixin):
     username: Mapped[str] = mapped_column(unique=True)
-    first_name: Mapped[str] = mapped_column(nullable=True)
-    last_name: Mapped[str] = mapped_column(nullable=True)
+    first_name: Mapped[str | None]
+    last_name: Mapped[str | None]
     hashed_password: Mapped[str]
-    email: Mapped[str] = mapped_column(nullable=True)
+    email: Mapped[str | None]
+    telegram_id: Mapped[str | None]
 
 
 class Token(Base, PrimaryKeyMixin, TimingMixin):

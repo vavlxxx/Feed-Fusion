@@ -35,6 +35,10 @@ class ChannelExistsError(ObjectExistsError):
     pass
 
 
+class EmptyChannelError(ObjectNotFoundError):
+    detail = "Channel is empty"
+
+
 class ValueOutOfRangeError(ApplicationError):
     detail = "Value out of integer range"
 
@@ -47,8 +51,12 @@ class UserExistsError(ObjectExistsError):
     detail = "User already exists"
 
 
-class UserNotFoundError(ApplicationError):
+class UserNotFoundError(ObjectNotFoundError):
     detail = "User not found"
+
+
+class SubNotFoundError(ObjectNotFoundError):
+    detail = "Subscription not found"
 
 
 class ApplicationHTTPError(HTTPException):
@@ -67,6 +75,16 @@ class ValueOutOfRangeHTTPError(ApplicationHTTPError):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.detail = "Value out of valid range"
+
+
+class SubNotFoundHTTPError(ApplicationHTTPError):
+    detail = "Subscription not found"
+    status_code = status.HTTP_404_NOT_FOUND
+
+
+class EmptyChannelHTTPError(ApplicationHTTPError):
+    detail = "Channel is empty"
+    status_code = status.HTTP_404_NOT_FOUND
 
 
 class ChannelNotFoundHTTPError(ApplicationHTTPError):

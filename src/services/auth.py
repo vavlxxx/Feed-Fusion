@@ -109,7 +109,7 @@ class AuthService(BaseService, HashManager):
         if user is None:
             user = await self.db.auth.get_one(id=uid)
         access_token = self.create_access_token(
-            payload={"sub": user.username, "uid": user.id}
+            payload={"sub": str(user.id), "username": user.username}
         )
         refresh_token = self.create_refresh_token(payload={"sub": f"{user.id}"})
 
@@ -151,8 +151,8 @@ class AuthService(BaseService, HashManager):
         await self.db.commit()
         return user
 
-    async def get_profile(self, username: str) -> UserDTO:
+    async def get_profile(self, uid: str) -> UserDTO:
         try:
-            return await self.db.auth.get_user_with_passwd(username=username)
+            return await self.db.auth.get_user_with_passwd(id=uid)
         except ObjectNotFoundError as exc:
             raise UserNotFoundError from exc

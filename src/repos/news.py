@@ -13,7 +13,7 @@ from src.repos.mappers.mappers import NewsMapper
 from src.utils.exceptions import ValueOutOfRangeError
 
 
-class NewsRepo(BaseRepo):
+class NewsRepo(BaseRepo[News, NewsDTO]):
     model = News
     mapper = NewsMapper
 

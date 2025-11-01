@@ -48,10 +48,10 @@ def _validate_token_type(payload: dict, expected_type: TokenType):
 
 
 def _extract_token_subject(payload: dict) -> str:
-    username = payload.get("sub")
-    if not username:
+    sub = payload.get("sub")
+    if not sub:
         raise MissingSubjectHTTPError
-    return username
+    return sub
 
 
 def resolve_token_by_type(token_type: TokenType):
@@ -60,7 +60,7 @@ def resolve_token_by_type(token_type: TokenType):
         def get_sub_from_access(creds: BearerCredentials):
             payload = _decode_token(_get_access_token(creds))
             _validate_token_type(payload, token_type)
-            return _extract_token_subject(payload)
+            return int(_extract_token_subject(payload))
 
         return get_sub_from_access
 
@@ -79,5 +79,5 @@ def resolve_token_by_type(token_type: TokenType):
         return get_sub_from_refresh
 
 
-UsernameByAccess = Annotated[str, Depends(resolve_token_by_type(TokenType.ACCESS))]
-UidByRefresh = Annotated[int, Depends(resolve_token_by_type(TokenType.REFRESH))]
+SubByAccess = Annotated[str, Depends(resolve_token_by_type(TokenType.ACCESS))]
+SubByRefresh = Annotated[int, Depends(resolve_token_by_type(TokenType.REFRESH))]
