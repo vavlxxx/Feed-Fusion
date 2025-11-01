@@ -26,6 +26,7 @@ services:
     depends_on:
       - app
     command: "poetry run celery --app=src.tasks.app:celery_app worker -l INFO"
+    
   celery_beat:
     image: feed_fusion:1.0.0
     container_name: ffusion_celery_beat

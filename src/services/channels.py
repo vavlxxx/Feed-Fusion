@@ -23,7 +23,7 @@ class ChannelService(BaseService):
 
     async def add_new_channel(self, data: ChannelAddDTO):
         try:
-            channel: ChannelDTO = await self.db.categories.add(data)
+            channel: ChannelDTO = await self.db.channels.add(data)
         except ObjectExistsError as exc:
             raise ChannelExistsError from exc
         await self.db.commit()
@@ -36,17 +36,17 @@ class ChannelService(BaseService):
     ) -> ChannelDTO:
 
         try:
-            channel: ChannelDTO = await self.db.channels.edit(
+            await self.db.channels.edit(
                 data=data,
                 id=channel_id,
                 ensure_existence=True,
             )
+            await self.db.commit()
         except ObjectNotFoundError as exc:
             raise ChannelNotFoundError from exc
         except ObjectExistsError as exc:
             raise ChannelExistsError from exc
-
-        await self.db.commit()
+        channel: ChannelDTO = await self.db.channels.get_one(id=channel_id)
         return channel
 
     async def delete_channel(self, channel_id: int) -> None:

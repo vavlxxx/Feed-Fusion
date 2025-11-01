@@ -41,12 +41,12 @@ class ValueOutOfRangeError(ApplicationError):
 
 class ApplicationHTTPError(HTTPException):
     detail = "Something went wrong"
-    status = status.HTTP_500_INTERNAL_SERVER_ERROR
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
 
     def __init__(self, detail: str | None = None):
         if detail is not None:
             self.detail = detail
-        super().__init__(detail=self.detail, status_code=self.status)
+        super().__init__(detail=self.detail, status_code=self.status_code)
 
 
 class ValueOutOfRangeHTTPError(ApplicationHTTPError):
@@ -54,12 +54,14 @@ class ValueOutOfRangeHTTPError(ApplicationHTTPError):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.detail = "Значение выходит за допустимые пределы"
+        self.detail = "Value out of valid range"
 
 
 class ChannelNotFoundHTTPError(ApplicationHTTPError):
     status_code = status.HTTP_404_NOT_FOUND
+    detail = "Channel not found"
 
 
 class ChannelExistsErrorHTTPError(ApplicationHTTPError):
     status_code = status.HTTP_409_CONFLICT
+    detail = "Channel already exists"

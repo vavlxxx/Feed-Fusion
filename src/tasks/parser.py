@@ -31,6 +31,12 @@ def parse_date(date: str):
     )
 
 
+def parse_text(item: feedparser.FeedParserDict, key: str):
+    raw = item.get(key)
+    text = (raw.strip() if raw else "") or "Отсутствует"
+    return text
+
+
 async def parse_rss_feeds():
     logging.info("Started parsing...")
     async with DBManager(session_factory=sessionmaker_null_pool) as db:
@@ -45,15 +51,12 @@ async def parse_rss_feeds():
 
         result = []
         for entry in feed.entries:
-            raw_summary = entry.get("summary")
-            summary = (raw_summary.strip() if raw_summary else "") or "Отсутствует"
-
             result.append(
                 ParsedNewsDTO(
                     image=get_image_from_links(entry.get("links", [])),
-                    title=entry.get("title", "Без заголовка"),
-                    link=entry.get("link", "Отсутствует"),
-                    summary=summary,
+                    title=parse_text(entry, "title"),
+                    link=parse_text(entry, "link"),
+                    summary=parse_text(entry, "summary"),
                     source=source_name,
                     published=parse_date(entry.get("published")),
                     channel_id=channel.id,

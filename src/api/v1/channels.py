@@ -1,12 +1,14 @@
 from fastapi import APIRouter
 
-from src.schemas.channels import ChannelAddDTO, ChannelUpdateDTO
+from src.schemas.channels import ChannelAddDTO, ChannelDTO, ChannelUpdateDTO
 from src.services.channels import ChannelService
 from src.utils.exceptions import (
     ChannelExistsError,
     ChannelNotFoundError,
     ChannelNotFoundHTTPError,
     ChannelExistsErrorHTTPError,
+    ValueOutOfRangeError,
+    ValueOutOfRangeHTTPError,
 )
 from src.api.v1.dependencies.db import DBDep
 
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/channels", tags=["Channels"])
 @router.get("/")
 async def get_channels(
     db: DBDep,
-) -> None:
+) -> dict[str, str | list[ChannelDTO]]:
     channels = await ChannelService(db).get_channels_list()
     return {
         "message": "Channels found successfully",
@@ -28,11 +30,13 @@ async def get_channels(
 async def get_channel_by_id(
     db: DBDep,
     channel_id: int,
-) -> None:
+) -> dict[str, str | ChannelDTO]:
     try:
-        channel = await ChannelService(db).get_channel_by_id(channel_id)
+        channel: ChannelDTO = await ChannelService(db).get_channel_by_id(channel_id)
     except ChannelNotFoundError as exc:
         raise ChannelNotFoundHTTPError from exc
+    except ValueOutOfRangeError as exc:
+        raise ValueOutOfRangeHTTPError(detail=exc.detail) from exc
     return {
         "message": "Channel found successfully",
         "data": channel,
@@ -43,9 +47,9 @@ async def get_channel_by_id(
 async def add_channel(
     db: DBDep,
     data: ChannelAddDTO,
-):
+) -> dict[str, str | ChannelDTO]:
     try:
-        channel = await ChannelService(db).add_new_channel(data)
+        channel: ChannelDTO = await ChannelService(db).add_new_channel(data)
     except ChannelExistsError as exc:
         raise ChannelExistsErrorHTTPError from exc
     return {
@@ -59,14 +63,19 @@ async def update_channel(
     db: DBDep,
     channel_id: int,
     data: ChannelUpdateDTO,
-):
+) -> dict[str, str | ChannelDTO]:
     try:
-        await ChannelService(db).update_channel(data, channel_id)
+        channel: ChannelDTO = await ChannelService(db).update_channel(data, channel_id)
     except ChannelNotFoundError as exc:
         raise ChannelNotFoundHTTPError from exc
     except ChannelExistsError as exc:
         raise ChannelExistsErrorHTTPError from exc
-    return {"message": "Channel updated successfully"}
+    except ValueOutOfRangeError as exc:
+        raise ValueOutOfRangeHTTPError(detail=exc.detail) from exc
+    return {
+        "message": "Channel updated successfully",
+        "data": channel,
+    }
 
 
 @router.delete("/{channel_id}")
@@ -78,4 +87,8 @@ async def delete_channel(
         await ChannelService(db).delete_channel(channel_id)
     except ChannelNotFoundError as exc:
         raise ChannelNotFoundHTTPError from exc
-    return {"message": "Channel deleted successfully"}
+    except ValueOutOfRangeError as exc:
+        raise ValueOutOfRangeHTTPError(detail=exc.detail) from exc
+    return {
+        "message": "Channel deleted successfully",
+    }
