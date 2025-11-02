@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     MODE: Literal["TEST", "DEV", "PROD"] = "DEV"
     EMPTY_TEXT: str = "Отсутствует"
     TIMEZONE: int = 5
+    PREFERED_HOURS_PERIOD: int = 24
 
     ADMIN_USERNAME: str
     ADMIN_PASSWORD: str

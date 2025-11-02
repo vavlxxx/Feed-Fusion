@@ -34,17 +34,12 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
 
         return [self.mapper.map_to_domain_entity(obj) for obj in result.scalars().all()]
 
-    async def add_news(self, data: Sequence[AddNewsDTO]):
-        add_obj_stmt = (
-            pg_insert(self.model)
-            .values(data.model_dump())
-            .on_conflict_do_update(
-                constraint="uq_news_content_hash",
-                set_={"updated_at": datetime.now(timezone.utc).replace(tzinfo=None)},
-            )
-            .returning(self.model.id)
+    async def get_hashes_by_hashes(self, hashes) -> list[str]:
+        stmt = select(self.model.content_hash).where(
+            self.model.content_hash.in_(hashes)
         )
-        await self.session.execute(add_obj_stmt)
+        result = await self.session.execute(stmt)
+        return list(set(row[0] for row in result.all()))
 
     async def get_all_filtered_with_pagination(
         self,

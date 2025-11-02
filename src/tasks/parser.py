@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import feedparser
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from src.schemas.news import ParsedNewsDTO
 from src.tasks.app import celery_app
@@ -51,19 +51,28 @@ async def parse_rss_feeds():
         logger.info("News quantity: %s", len(feed.entries))
 
         result = []
-        for entry in feed.entries:
+        for idx, entry in enumerate(feed.entries, 1):
+            published: datetime = parse_date(entry.get("published"))
+            link: str = parse_text(entry, "link")
+            title: str = parse_text(entry, "title")
+            if published < datetime.now(timezone.utc) - timedelta(
+                hours=settings.PREFERED_HOURS_PERIOD
+            ):
+                logger.info("#%s News (%s) too old, skipping...", idx, link)
+                continue
+
             result.append(
                 ParsedNewsDTO(
                     image=get_image_from_links(entry.get("links", [])),
-                    title=parse_text(entry, "title"),
-                    link=parse_text(entry, "link"),
+                    title=title,
+                    link=link,
                     summary=parse_text(entry, "summary"),
                     source=source_name,
-                    published=parse_date(entry.get("published")),
+                    published=published,
                     channel_id=channel.id,
                 )
             )
-            logging.info(f"Sent to queue: %s", entry.get("title", "Без заголовка")[:60])
+            logging.info(f"#%s Sent to queue: %s", idx, title)
 
         if result:
             process_news.delay([obj.model_dump() for obj in result])
