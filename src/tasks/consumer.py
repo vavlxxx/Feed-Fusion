@@ -113,14 +113,6 @@ class RMQTelegramNewsConsumer(RMQManager):
                 self.send_news_to_telegram(telegram_id, news)
             )
             if success:
-                self.loop.run_until_complete(
-                    self.update_subscription_last_news_id(
-                        subscription_id,
-                        news.id,
-                        channel_id,
-                    )
-                )
-
                 channel.basic_ack(delivery_tag=delivery_tag)
                 logger.info(
                     "Message ACKed: news_id=%s, subscription_id=%s",
@@ -200,28 +192,28 @@ class RMQTelegramNewsConsumer(RMQManager):
             )
             return False
 
-    async def update_subscription_last_news_id(
-        self, subscription_id: int, news_id: int, channel_id: int
-    ):
-        async with DBManager(session_factory=sessionmaker_null_pool) as db:
-            subscription = await db.subs.get_one(id=subscription_id)
-            if not subscription:
-                logger.warning("Subscription id=%s not found", subscription_id)
-                return
+    # async def update_subscription_last_news_id(
+    #     self, subscription_id: int, news_id: int, channel_id: int
+    # ):
+    #     async with DBManager(session_factory=sessionmaker_null_pool) as db:
+    #         subscription = await db.subs.get_one(id=subscription_id)
+    #         if not subscription:
+    #             logger.warning("Subscription id=%s not found", subscription_id)
+    #             return
 
-            if news_id > subscription.last_news_id:
-                await db.subs.edit(
-                    data=SubscriptionUpdateDTO(last_news_id=news_id),
-                    id=subscription_id,
-                )
-                await db.commit()
+    #         if news_id > subscription.last_news_id:
+    #             await db.subs.edit(
+    #                 data=SubscriptionUpdateDTO(last_news_id=news_id),
+    #                 id=subscription_id,
+    #             )
+    #             await db.commit()
 
-                logger.info(
-                    "Updated subscription id=%s: last_news_id=%s -> %s",
-                    subscription_id,
-                    subscription.last_news_id,
-                    news_id,
-                )
+    #             logger.info(
+    #                 "Updated subscription id=%s: last_news_id=%s -> %s",
+    #                 subscription_id,
+    #                 subscription.last_news_id,
+    #                 news_id,
+    #             )
 
 
 if __name__ == "__main__":

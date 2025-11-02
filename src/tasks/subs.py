@@ -1,7 +1,8 @@
 import logging
 import asyncio
 
-from src.schemas.subscriptions import SubscriptionWithUserDTO
+from src.schemas.news import NewsDTO
+from src.schemas.subscriptions import SubscriptionUpdateDTO, SubscriptionWithUserDTO
 from src.tasks.app import celery_app
 from src.utils.db_tools import DBManager
 from src.db import sessionmaker_null_pool
@@ -23,7 +24,7 @@ async def collect_and_publish_news():
         total_published = 0
 
         for sub in subs:
-            news_to_send = await db.news.get_recent(
+            news_to_send: list[NewsDTO] = await db.news.get_recent(
                 channel_id=sub.channel_id,
                 gt=sub.last_news_id,
             )
@@ -48,6 +49,11 @@ async def collect_and_publish_news():
                     RMQPublisher().publish(message)
                     total_published += 1
 
+                await db.subs.edit(
+                    data=SubscriptionUpdateDTO(last_news_id=news_to_send[-1].id),
+                    id=sub.id,
+                )
+                await db.commit()
                 logger.info(
                     "Published %s news to queue for subscription id=%s",
                     len(news_to_send),

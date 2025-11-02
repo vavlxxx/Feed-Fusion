@@ -55,7 +55,7 @@ async def parse_rss_feeds():
             published: datetime = parse_date(entry.get("published"))
             link: str = parse_text(entry, "link")
             title: str = parse_text(entry, "title")
-            if published < datetime.now(timezone.utc) - timedelta(
+            if published < datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
                 hours=settings.PREFERED_HOURS_PERIOD
             ):
                 logger.info("#%s News (%s) too old, skipping...", idx, link)

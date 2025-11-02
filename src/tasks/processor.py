@@ -12,10 +12,11 @@ logger = logging.getLogger("src.tasks.processor")
 
 
 @celery_app.task(name="process_news_item", bind=True, max_retries=3)
-def process_news(self, news_items: list[ParsedNewsDTO]) -> None:
+def process_news(self, news_items: list[dict]) -> None:
     logger.info("Started saving news into DB...")
     if not news_items:
         return
+    news_items = [ParsedNewsDTO(**item) for item in news_items]
     asyncio.run(save_news(self, news_items))
 
 
@@ -43,7 +44,7 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
 
         data = []
         for news_item, content_hash in unique_items:
-            data.append(AddNewsDTO(**news_item, content_hash=content_hash))
+            data.append(AddNewsDTO(**news_item.model_dump(), content_hash=content_hash))
 
         try:
             inserted_ids = await db.news.add_bulk(data)

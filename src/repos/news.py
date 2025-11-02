@@ -17,7 +17,7 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
     model = News
     mapper = NewsMapper
 
-    async def get_recent(self, channel_id: int, gt: int):
+    async def get_recent(self, channel_id: int, gt: int) -> list[NewsDTO]:
         query = (
             select(self.model)
             .filter_by(channel_id=channel_id)
