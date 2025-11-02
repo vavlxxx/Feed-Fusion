@@ -9,7 +9,10 @@ BASE_DIR = Path(__file__).parent.parent
 
 class Settings(BaseSettings):
     TITLE: str = "Feed Fusion"
-    MODE: Literal["TEST", "DEV", "PROD"] = "TEST"
+    MODE: Literal["TEST", "DEV", "PROD"] = "DEV"
+
+    TELEGRAM_BOT_TOKEN: str
+    TELEGRAM_ADMIN_CONTACT: str
 
     DB_HOST: str
     DB_USER: str
@@ -59,6 +62,9 @@ class Settings(BaseSettings):
     RABBIT_PASSWORD: str
     RABBIT_HOST: str
     RABBIT_PORT: int
+
+    CONSUMERS_COUNT: int = 1
+    TELEGRAM_NEWS_QUEUE: str
 
     @property
     def rabbit_url(self):

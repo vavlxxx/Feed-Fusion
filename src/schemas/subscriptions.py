@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from src.schemas.base import BaseDTO
+from src.schemas.auth import UserDTO
 
 
 class SubscriptionAddDTO(BaseDTO):
@@ -12,3 +14,13 @@ class SubscriptionDTO(SubscriptionAddDTO):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class SubscriptionUpdateDTO(SubscriptionAddDTO):
+    channel_id: int | None = None
+    last_news_id: int | None = None
+    user_id: int | None = None
+
+
+class SubscriptionWithUserDTO(SubscriptionDTO):
+    user: UserDTO

@@ -17,6 +17,23 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
     model = News
     mapper = NewsMapper
 
+    async def get_recent(self, channel_id: int, gt: int):
+        query = (
+            select(self.model)
+            .filter_by(channel_id=channel_id)
+            .filter(self.model.id > gt)
+            .order_by(self.model.id.asc())
+        )
+
+        try:
+            result = await self.session.execute(query)
+        except DBAPIError as exc:
+            if isinstance(exc.orig.__cause__, DataError):  # type: ignore
+                raise ValueOutOfRangeError(detail=exc.orig.__cause__.args[0]) from exc  # type: ignore
+            raise exc
+
+        return [self.mapper.map_to_domain_entity(obj) for obj in result.scalars().all()]
+
     async def add_news(self, data: Sequence[AddNewsDTO]):
         add_obj_stmt = (
             pg_insert(self.model)
@@ -27,8 +44,7 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
             )
             .returning(self.model.id)
         )
-        result = await self.session.execute(add_obj_stmt)
-        return result.scalars().all()
+        await self.session.execute(add_obj_stmt)
 
     async def get_all_filtered_with_pagination(
         self,

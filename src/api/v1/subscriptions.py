@@ -9,6 +9,8 @@ from src.utils.exceptions import (
     ChannelNotFoundHTTPError,
     EmptyChannelError,
     EmptyChannelHTTPError,
+    SubExistsError,
+    SubExistsErrorHTTPError,
     ValueOutOfRangeError,
     ValueOutOfRangeHTTPError,
     SubNotFoundError,
@@ -48,6 +50,8 @@ async def create_subscription(
         raise EmptyChannelHTTPError from exc
     except MisingTelegramError as exc:
         raise MisingTelegramErrorHTTPError from exc
+    except SubExistsError as exc:
+        raise SubExistsErrorHTTPError from exc
     except ValueOutOfRangeError as exc:
         raise ValueOutOfRangeHTTPError(detail=exc.detail) from exc
     return {

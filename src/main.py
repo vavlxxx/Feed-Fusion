@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -20,6 +21,8 @@ from src.utils.logging import configurate_logging, get_logger
 from src.api.docs import router as docs_router
 from src.utils.db_tools import DBHealthChecker
 from src.config import settings
+from src.bot.bot import bot
+from src.tasks.consumer import RMQTelegramNewsConsumer
 
 
 @asynccontextmanager
@@ -33,6 +36,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     FastAPICache.init(RedisBackend(redis_manager._redis), prefix="fastapi-cache")
     logger.info("FastAPI Cache has been initialized!")
+
+    if settings.MODE == "TEST":
+        await bot.send_message(
+            chat_id=settings.TELEGRAM_ADMIN_CONTACT,
+            text="🚀 Feed Fusion app has been started!",
+        )
+        logger.info("Sent message to admin Telegram Chat...")
 
     logger.info("All checks passed!")
     yield

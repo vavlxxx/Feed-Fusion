@@ -11,13 +11,17 @@ services:
     networks:
       - "ffusion_net"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     command: "poetry run python ./src/gunicorn/run.py"
     volumes:
       - ./logs:/app/logs
 
   celery_worker:
-    profile: ["celery"]
     image: feed_fusion:1.0.0
     container_name: ffusion_celery_worker
     env_file:
@@ -25,11 +29,15 @@ services:
     networks:
       - "ffusion_net"
     depends_on:
-      - app
+      app:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     command: "poetry run celery --app=src.tasks.app:celery_app worker -l INFO"
 
   celery_beat:
-    profile: ["celery"]
     image: feed_fusion:1.0.0
     container_name: ffusion_celery_beat
     env_file:
@@ -37,8 +45,29 @@ services:
     networks:
       - "ffusion_net"
     depends_on:
-      - app
+      app:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     command: "poetry run celery --app=src.tasks.app:celery_app beat -l INFO"
+
+  rmq_consumer:
+    image: feed_fusion:1.0.0
+    env_file:
+      - ".env.docker"
+    networks:
+      - "ffusion_net"
+    depends_on:
+      app:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: "poetry run python ./src/tasks/consumer.py"
+
 
   postgres:
     container_name: ffusion_db
@@ -51,6 +80,11 @@ services:
       - "ffusion_net"
     env_file:
       - ".env.postgres"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:latest
@@ -59,9 +93,13 @@ services:
       - "6379:6379"
     networks:
       - "ffusion_net"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   rabbitmq:
-    profile: ["celery"]
     image: rabbitmq:3-management-alpine
     hostname: rabbitmq
     container_name: ffusion_rabbit
@@ -74,6 +112,11 @@ services:
       - ".env.rabbitmq"
     volumes:
       - ffusion_rmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   ffusion_rmq_data:

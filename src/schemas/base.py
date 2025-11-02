@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 from pydantic import BaseModel, ConfigDict
 
 
@@ -9,3 +10,10 @@ class BaseDTO(BaseModel):
         strict=True,
         str_min_length=1,
     )
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)

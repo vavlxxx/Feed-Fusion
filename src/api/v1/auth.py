@@ -8,7 +8,13 @@ from src.api.v1.responses.auth import (
     AUTH_REFRESH_RESPONSES,
     AUTH_REGISTER_RESPONSES,
 )
-from src.schemas.auth import LoginData, RegisterData, TokenResponseDTO, UserDTO
+from src.schemas.auth import (
+    LoginData,
+    RegisterData,
+    TokenResponseDTO,
+    UserDTO,
+    UserUpdateDTO,
+)
 from src.services.auth import AuthService
 from src.utils.exceptions import (
     InvalidLoginDataError,
@@ -84,6 +90,18 @@ async def get_profile(
         return await AuthService(db).get_profile(uid=uid)
     except UserNotFoundError as exc:
         raise UserNotFoundHTTPError from exc
+
+
+@router.put(
+    path="/profile/",
+)
+async def update_profile(
+    db: DBDep,
+    uid: SubByAccess,
+    data: UserUpdateDTO,
+) -> UserDTO:
+    profile = await AuthService(db).update_profile(uid=uid, data=data)
+    return profile
 
 
 @router.get(

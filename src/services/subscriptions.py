@@ -3,10 +3,12 @@ from src.services.channels import ChannelService
 from src.services.news import NewsService
 from src.schemas.subscriptions import SubscriptionAddDTO
 from src.utils.exceptions import (
+    ObjectExistsError,
     ObjectNotFoundError,
     SubNotFoundError,
     EmptyChannelError,
     MisingTelegramError,
+    SubExistsError,
 )
 
 
@@ -36,7 +38,13 @@ class SubsService(BaseService):
             last_news_id=last_news[0].id,
             user_id=uid,
         )
-        return await self.db.subs.add(data)
+        try:
+            sub = await self.db.subs.add(data)
+        except ObjectExistsError as exc:
+            raise SubExistsError from exc
+
+        await self.db.commit()
+        return sub
 
     async def delete_subscription(self, sub_id: int) -> None:
         try:

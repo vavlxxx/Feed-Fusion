@@ -23,6 +23,7 @@ celery_app = Celery(
     include=[
         "src.tasks.parser",
         "src.tasks.processor",
+        "src.tasks.subs",
     ],
 )
 
@@ -31,6 +32,10 @@ celery_app.conf.update(
     accept_content=["json"],
     result_serializer="json",
     worker_prefetch_multiplier=1,
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    beat_scheduler="redbeat.RedBeatScheduler",
+    redbeat_redis_url=settings.redis_url,
 )
 
 celery_app.conf.beat_schedule = {
@@ -38,8 +43,8 @@ celery_app.conf.beat_schedule = {
         "task": "parse_rss",
         "schedule": 60.0,
     },
-    # "check_subscriptions": {
-    #     "task": "check_subscriptions",
-    #     "schedule": 60.0,
-    # },
+    "check_subs": {
+        "task": "check_subs",
+        "schedule": 30.0,
+    },
 }

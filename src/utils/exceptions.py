@@ -35,6 +35,10 @@ class ChannelExistsError(ObjectExistsError):
     pass
 
 
+class SubExistsError(ObjectExistsError):
+    detail = "Subscription already exists"
+
+
 class EmptyChannelError(ObjectNotFoundError):
     detail = "Channel is empty"
 
@@ -103,6 +107,11 @@ class ChannelNotFoundHTTPError(ApplicationHTTPError):
 
 class ChannelExistsErrorHTTPError(ApplicationHTTPError):
     detail = "Channel already exists"
+    status_code = status.HTTP_409_CONFLICT
+
+
+class SubExistsErrorHTTPError(ApplicationHTTPError):
+    detail = "Subscription already exists"
     status_code = status.HTTP_409_CONFLICT
 
 

@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Annotated
 
 from fastapi import Form
-from pydantic import EmailStr
+from pydantic import EmailStr, model_validator
 
 from src.schemas.base import BaseDTO
 
@@ -26,9 +26,24 @@ class UserAddDTO(BaseDTO):
 class UserDTO(BaseDTO):
     id: int
     username: str
+    telegram_id: str | None
     first_name: str | None
     last_name: str | None
     email: EmailStr | None
+
+
+class UserUpdateDTO(BaseDTO):
+    first_name: str | None = None
+    last_name: str | None = None
+    email: EmailStr | None = None
+    telegram_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_all_fields_are_providen(self):
+        values = tuple(self.model_dump().values())
+        if all(map(lambda val: val is None, values)):
+            raise ValueError("provide at least one non-empty field")
+        return self
 
 
 class UserWithPasswordDTO(UserDTO):

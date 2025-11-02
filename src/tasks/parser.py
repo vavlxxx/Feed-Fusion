@@ -23,7 +23,7 @@ def get_image_from_links(links: list[dict[str, str]]):
             return link.get("href", None)
 
 
-def parse_date(date: str):
+def parse_date(date: str) -> datetime:
     return (
         datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %z")
         .astimezone(timezone.utc)

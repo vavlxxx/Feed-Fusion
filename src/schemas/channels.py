@@ -12,9 +12,9 @@ class ChannelAddDTO(BaseDTO):
 
 
 class ChannelUpdateDTO(BaseDTO):
-    title: str | None
-    link: str | None
-    description: str | None
+    title: str | None = None
+    link: str | None = None
+    description: str | None = None
 
     @model_validator(mode="after")
     def validate_all_fields_are_providen(self):

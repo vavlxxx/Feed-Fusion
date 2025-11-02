@@ -5,7 +5,7 @@ import jwt
 from jwt.exceptions import ExpiredSignatureError
 
 from src.utils.hashing import HashManager
-from src.schemas.auth import UserWithPasswordDTO
+from src.schemas.auth import UserUpdateDTO, UserWithPasswordDTO
 from src.config import settings
 from src.schemas.auth import (
     CreatedTokenDTO,
@@ -156,3 +156,8 @@ class AuthService(BaseService, HashManager):
             return await self.db.auth.get_user_with_passwd(id=uid)
         except ObjectNotFoundError as exc:
             raise UserNotFoundError from exc
+
+    async def update_profile(self, uid: str, data: UserUpdateDTO) -> UserDTO:
+        await self.db.auth.edit(id=uid, data=data, ensure_existence=False)
+        await self.db.commit()
+        return await self.db.auth.get_one(id=uid)
