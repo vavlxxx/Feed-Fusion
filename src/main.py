@@ -1,5 +1,4 @@
 import sys
-import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -14,15 +13,17 @@ from fastapi.responses import ORJSONResponse
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 
-from src.db import engine
+from src.db import engine, sessionmaker
 from src.api import router as main_router
+from src.utils.exceptions import UserExistsError
 from src.utils.redis_manager import redis_manager
 from src.utils.logging import configurate_logging, get_logger
 from src.api.docs import router as docs_router
-from src.utils.db_tools import DBHealthChecker
+from src.utils.db_tools import DBHealthChecker, DBManager
 from src.config import settings
 from src.bot.bot import bot
-from src.tasks.consumer import RMQTelegramNewsConsumer
+from src.schemas.auth import UserRegisterDTO
+from src.services.auth import AuthService
 
 
 @asynccontextmanager
@@ -36,6 +37,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     FastAPICache.init(RedisBackend(redis_manager._redis), prefix="fastapi-cache")
     logger.info("FastAPI Cache has been initialized!")
+
+    async with DBManager(session_factory=sessionmaker) as db:
+        try:
+            await AuthService(db).register_user(
+                register_data=UserRegisterDTO(
+                    username=settings.ADMIN_USERNAME,
+                    password=settings.ADMIN_PASSWORD,
+                ),
+                is_admin=True,
+            )
+            await db.commit()
+            logger.info("Successfully created admin user!")
+        except UserExistsError:
+            logger.info("Admin user already exists, skipping...")
 
     if settings.MODE == "TEST":
         await bot.send_message(

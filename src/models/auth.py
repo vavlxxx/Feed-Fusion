@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.mixins.primary_key import PrimaryKeyMixin
 from src.models.mixins.timing import TimingMixin
 from src.models.base import Base
-from src.schemas.auth import TokenType
+from src.schemas.auth import TokenType, UserRole
 
 if TYPE_CHECKING:
     from src.models.subscriptions import Subscription
@@ -19,7 +19,7 @@ class User(Base, PrimaryKeyMixin, TimingMixin):
     first_name: Mapped[str | None]
     last_name: Mapped[str | None]
     hashed_password: Mapped[str]
-    email: Mapped[str | None]
+    role: Mapped[UserRole] = mapped_column(ENUM(UserRole), default=UserRole.CUSTOMER)
     telegram_id: Mapped[str | None]
 
     subscriptions: Mapped[list["Subscription"]] = relationship(

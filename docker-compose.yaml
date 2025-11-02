@@ -54,6 +54,7 @@ services:
     command: "poetry run celery --app=src.tasks.app:celery_app beat -l INFO"
 
   rmq_consumer:
+    container_name: ffusion_rmq_consumer
     image: feed_fusion:1.0.0
     env_file:
       - ".env.docker"

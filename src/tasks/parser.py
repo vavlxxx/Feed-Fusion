@@ -8,6 +8,7 @@ from src.tasks.app import celery_app
 from src.tasks.processor import process_news
 from src.utils.db_tools import DBManager
 from src.db import sessionmaker_null_pool
+from src.config import settings
 
 logger = logging.getLogger("src.tasks.parser")
 
@@ -33,7 +34,7 @@ def parse_date(date: str) -> datetime:
 
 def parse_text(item: feedparser.FeedParserDict, key: str):
     raw = item.get(key)
-    text = (raw.strip() if raw else "") or "Отсутствует"
+    text = (raw.strip() if raw else "") or settings.EMPTY_TEXT
     return text
 
 
@@ -45,7 +46,7 @@ async def parse_rss_feeds():
     for channel in channels:
         logger.info("Feed %s", channel.link)
         feed = feedparser.parse(channel.link)
-        source_name = feed.feed.get("title", "Неизвестный источник")
+        source_name = feed.feed.get("title", settings.EMPTY_TEXT)
         logger.info("Source: %s", source_name)
         logger.info("News quantity: %s", len(feed.entries))
 

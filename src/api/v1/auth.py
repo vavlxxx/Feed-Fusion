@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Response
 
-from src.api.v1.dependencies.auth import SubByRefresh, SubByAccess
+from src.api.v1.dependencies.auth import IsAdminDep, SubByRefresh, SubByAccess
 from src.api.v1.dependencies.db import DBDep
 from src.api.v1.responses.auth import (
     AUTH_LOGIN_RESPONSES,
@@ -68,7 +68,9 @@ async def register(
     Only username and password are required
     """
     try:
-        return await AuthService(db).register_user(register_data=register_data)
+        return await AuthService(db).register_user(
+            register_data=register_data,
+        )
     except UserExistsError as exc:
         raise UserExistsHTTPError from exc
 
@@ -100,6 +102,11 @@ async def update_profile(
     uid: SubByAccess,
     data: UserUpdateDTO,
 ) -> UserDTO:
+    """
+    ## 👤 Update profile
+
+    Provide at least one non-empty field to update your plofile data
+    """
     profile = await AuthService(db).update_profile(uid=uid, data=data)
     return profile
 

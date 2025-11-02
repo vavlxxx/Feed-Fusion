@@ -19,7 +19,6 @@ def config_loggers(*args, **kwargs):
 celery_app = Celery(
     "tasks",
     broker=settings.rabbit_url,
-    # backend=settings.redis_url,
     include=[
         "src.tasks.parser",
         "src.tasks.processor",
@@ -34,8 +33,8 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_acks_late=True,
     task_reject_on_worker_lost=True,
-    beat_scheduler="redbeat.RedBeatScheduler",
-    redbeat_redis_url=settings.redis_url,
+    # beat_scheduler="redbeat.RedBeatScheduler",
+    # redbeat_redis_url=settings.redis_url,
 )
 
 celery_app.conf.beat_schedule = {

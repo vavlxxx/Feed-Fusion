@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from src.api.v1.dependencies.auth import AdminAllowedDep
 from src.schemas.channels import ChannelAddDTO, ChannelDTO, ChannelUpdateDTO
 from src.services.channels import ChannelService
 from src.utils.exceptions import (
@@ -48,6 +49,7 @@ async def get_channel_by_id(
 async def add_channel(
     db: DBDep,
     data: ChannelAddDTO,
+    _: AdminAllowedDep,
 ) -> dict[str, str | ChannelDTO]:
     try:
         channel: ChannelDTO = await ChannelService(db).add_new_channel(data)
@@ -64,6 +66,7 @@ async def update_channel(
     db: DBDep,
     channel_id: int,
     data: ChannelUpdateDTO,
+    _: AdminAllowedDep,
 ) -> dict[str, str | ChannelDTO]:
     try:
         channel: ChannelDTO = await ChannelService(db).update_channel(data, channel_id)
@@ -83,6 +86,7 @@ async def update_channel(
 async def delete_channel(
     db: DBDep,
     channel_id: int,
+    _: AdminAllowedDep,
 ):
     try:
         await ChannelService(db).delete_channel(channel_id)

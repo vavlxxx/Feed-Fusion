@@ -85,6 +85,11 @@ class ValueOutOfRangeHTTPError(ApplicationHTTPError):
         self.detail = "Value out of valid range"
 
 
+class AdminAllowedHTTPError(ApplicationHTTPError):
+    detail = "Only admins allowed"
+    status_code = status.HTTP_403_FORBIDDEN
+
+
 class SubNotFoundHTTPError(ApplicationHTTPError):
     detail = "Subscription not found"
     status_code = status.HTTP_404_NOT_FOUND

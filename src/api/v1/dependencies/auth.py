@@ -14,6 +14,7 @@ from src.utils.exceptions import (
     MissingTokenHTTPError,
     ObjectNotFoundError,
     WithdrawnTokenHTTPError,
+    AdminAllowedHTTPError,
 )
 
 _bearer = HTTPBearer()
@@ -79,5 +80,24 @@ def resolve_token_by_type(token_type: TokenType):
         return get_sub_from_refresh
 
 
+def inspect_user_role(access_token: str = Depends(_get_access_token)) -> bool:
+    if access_token:
+        payload = {}
+        try:
+            payload = _decode_token(access_token)
+            _validate_token_type(payload, TokenType.ACCESS)
+        except Exception as _:
+            ...
+        return payload.get("is_admin", False)
+    return False
+
+
+def only_admins(is_admin: bool = Depends(inspect_user_role)):
+    if not is_admin:
+        raise AdminAllowedHTTPError
+
+
+AdminAllowedDep = Annotated[None, Depends(only_admins)]
+IsAdminDep = Annotated[bool, Depends(inspect_user_role)]
 SubByAccess = Annotated[str, Depends(resolve_token_by_type(TokenType.ACCESS))]
 SubByRefresh = Annotated[int, Depends(resolve_token_by_type(TokenType.REFRESH))]

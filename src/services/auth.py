@@ -5,7 +5,7 @@ import jwt
 from jwt.exceptions import ExpiredSignatureError
 
 from src.utils.hashing import HashManager
-from src.schemas.auth import UserUpdateDTO, UserWithPasswordDTO
+from src.schemas.auth import UserRole, UserUpdateDTO, UserWithPasswordDTO
 from src.config import settings
 from src.schemas.auth import (
     CreatedTokenDTO,
@@ -108,9 +108,12 @@ class AuthService(BaseService, HashManager):
     ) -> TokenResponseDTO:
         if user is None:
             user = await self.db.auth.get_one(id=uid)
-        access_token = self.create_access_token(
-            payload={"sub": str(user.id), "username": user.username}
-        )
+
+        payload = {"sub": str(user.id), "is_admin": False}
+        if user.role == UserRole.ADMIN:
+            payload["is_admin"] = True
+
+        access_token = self.create_access_token(payload=payload)
         refresh_token = self.create_refresh_token(payload={"sub": f"{user.id}"})
 
         hashed_refresh_token = self._hash_token(refresh_token.token)
@@ -138,10 +141,15 @@ class AuthService(BaseService, HashManager):
             refresh_token=refresh_token.token,
         )
 
-    async def register_user(self, register_data: RegisterData) -> UserDTO:
+    async def register_user(
+        self,
+        register_data: RegisterData,
+        is_admin: bool = False,
+    ) -> UserDTO:
         hashed_password = self._hash_password(register_data.password)
         user_to_add = UserAddDTO(
             hashed_password=hashed_password,
+            role=UserRole.ADMIN if is_admin else UserRole.CUSTOMER,
             **register_data.model_dump(exclude={"password"}),
         )
         try:

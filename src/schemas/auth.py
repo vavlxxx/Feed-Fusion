@@ -3,9 +3,14 @@ from enum import Enum
 from typing import Annotated
 
 from fastapi import Form
-from pydantic import EmailStr, model_validator
+from pydantic import model_validator
 
 from src.schemas.base import BaseDTO
+
+
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    CUSTOMER = "customer"
 
 
 class UserLoginDTO(BaseDTO):
@@ -21,21 +26,21 @@ class UserRegisterDTO(UserLoginDTO):
 class UserAddDTO(BaseDTO):
     username: str
     hashed_password: str
+    role: UserRole
 
 
 class UserDTO(BaseDTO):
     id: int
     username: str
+    role: UserRole = UserRole.CUSTOMER
     telegram_id: str | None
     first_name: str | None
     last_name: str | None
-    email: EmailStr | None
 
 
 class UserUpdateDTO(BaseDTO):
     first_name: str | None = None
     last_name: str | None = None
-    email: EmailStr | None = None
     telegram_id: str | None = None
 
     @model_validator(mode="after")

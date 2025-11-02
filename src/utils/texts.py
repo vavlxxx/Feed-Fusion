@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from src.config import settings
 
 
 def format_message(
@@ -8,15 +9,12 @@ def format_message(
     link: str,
     source: str,
 ):
-
+    summary = (
+        "\n" + summary + "\n" if summary and summary != settings.EMPTY_TEXT else ""
+    )
     return f"""
 📌 <i><b>{title}</b></i>
-
 {summary}
-
-🔗 <b>{source} <a href="{link}">(Перейти к источнику)</a></b>
-
+📅 <b>{(published + timedelta(hours=settings.TIMEZONE)).strftime(format="%d.%m.%Y %H:%M")}</b>
+🔗 <b><a href="{link}">{source}, читать</a></b>
 """
-
-
-# 📅 <b>{published.strftime(format="%d.%m.%Y %H:%M")}</b>
