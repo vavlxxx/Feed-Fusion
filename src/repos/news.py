@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from typing import Sequence
 
 from sqlalchemy import func, select
@@ -40,6 +39,20 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
         )
         result = await self.session.execute(stmt)
         return list(set(row[0] for row in result.all()))
+
+    async def add_bulk_upsert(self, data: Sequence[AddNewsDTO]) -> list[int]:
+        add_obj_stmt = (
+            pg_insert(self.model)
+            .values([item.model_dump() for item in data])
+            .returning(self.model.id)
+        )
+        excluded = add_obj_stmt.excluded
+        add_obj_stmt = add_obj_stmt.on_conflict_do_nothing(
+            constraint="uq_news_content_hash",
+        )
+
+        result = await self.session.execute(add_obj_stmt)
+        return result.scalars().all()
 
     async def get_all_filtered_with_pagination(
         self,

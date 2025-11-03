@@ -47,7 +47,7 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
             data.append(AddNewsDTO(**news_item.model_dump(), content_hash=content_hash))
 
         try:
-            inserted_ids = await db.news.add_bulk(data)
+            inserted_ids = await db.news.add_bulk_upsert(data)
             await db.commit()
             logger.info("Saved into DB: %s items", len(inserted_ids))
         except Exception as exc:
