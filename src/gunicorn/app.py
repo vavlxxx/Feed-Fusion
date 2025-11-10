@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from gunicorn.app.base import BaseApplication
-from utils.log_config import get_logging_config
+from src.utils.log_config import get_logging_config
 
 
 class GunicornApp(BaseApplication):

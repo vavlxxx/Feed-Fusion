@@ -1,6 +1,8 @@
 from src.schemas.news import NewsDTO
 from src.services.base import BaseService
 from src.utils.exceptions import ChannelNotFoundError, ObjectNotFoundError
+from src.utils.es_manager import ESManager
+from src.config import settings
 
 
 class NewsService(BaseService):
@@ -8,6 +10,7 @@ class NewsService(BaseService):
         self,
         limit: int,
         offset: int,
+        query_string: str | None = None,
         channel_id: int | None = None,
     ) -> tuple[int, list[NewsDTO]]:
         try:
@@ -16,9 +19,12 @@ class NewsService(BaseService):
         except ObjectNotFoundError as exc:
             raise ChannelNotFoundError from exc
 
-        total, news = await self.db.news.get_all_filtered_with_pagination(
-            limit=limit,
-            offset=offset,
-            channel_id=channel_id,
-        )
+        async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
+            total, news = await es.search(
+                query_string,
+                channel_id,
+                limit,
+                offset,
+            )
+
         return total, news

@@ -17,9 +17,10 @@ from src.db import engine, sessionmaker
 from src.api import router as main_router
 from src.utils.exceptions import UserExistsError
 from src.utils.redis_manager import redis_manager
-from utils.log_config import configurate_logging, get_logger
-from src.api.docs import router as docs_router
+from src.utils.log_config import configurate_logging, get_logger
 from src.utils.db_tools import DBHealthChecker, DBManager
+from src.utils.es_manager import ESManager
+from src.api.docs import router as docs_router
 from src.config import settings
 from src.bot.bot import bot
 from src.schemas.auth import UserRegisterDTO
@@ -51,6 +52,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.info("Successfully created admin user!")
         except UserExistsError:
             logger.info("Admin user already exists, skipping...")
+
+    async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
+        await es.connection_is_stable()
+        logger.info("Successfully connected to Elasticsearch!")
 
     if settings.MODE == "TEST":
         await bot.send_message(

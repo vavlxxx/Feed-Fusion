@@ -21,9 +21,11 @@ async def get_all_news(
     db: DBDep,
     pagination: PaginationDep,
     channel_id: int | None = Query(None),
+    query: str | None = Query(None),
 ):
     try:
         total_count, news = await NewsService(db).get_news_list(
+            query_string=query,
             offset=pagination.offset,
             limit=pagination.limit,
             channel_id=channel_id,

@@ -16,9 +16,6 @@ from pika.adapters import BlockingConnection
 from pika.adapters.blocking_connection import BlockingChannel
 
 from src.schemas.news import NewsDTO
-from src.schemas.subscriptions import SubscriptionUpdateDTO
-from src.utils.db_tools import DBManager
-from src.db import sessionmaker_null_pool
 from src.bot.bot import bot
 from src.config import settings
 from src.utils.texts import format_message
@@ -191,29 +188,6 @@ class RMQTelegramNewsConsumer(RMQManager):
                 exc,
             )
             return False
-
-    # async def update_subscription_last_news_id(
-    #     self, subscription_id: int, news_id: int, channel_id: int
-    # ):
-    #     async with DBManager(session_factory=sessionmaker_null_pool) as db:
-    #         subscription = await db.subs.get_one(id=subscription_id)
-    #         if not subscription:
-    #             logger.warning("Subscription id=%s not found", subscription_id)
-    #             return
-
-    #         if news_id > subscription.last_news_id:
-    #             await db.subs.edit(
-    #                 data=SubscriptionUpdateDTO(last_news_id=news_id),
-    #                 id=subscription_id,
-    #             )
-    #             await db.commit()
-
-    #             logger.info(
-    #                 "Updated subscription id=%s: last_news_id=%s -> %s",
-    #                 subscription_id,
-    #                 subscription.last_news_id,
-    #                 news_id,
-    #             )
 
 
 if __name__ == "__main__":

@@ -58,7 +58,7 @@ async def parse_rss_feeds():
             if published < datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
                 hours=settings.PREFERED_HOURS_PERIOD
             ):
-                logger.info("#%s News (%s) too old, skipping...", idx, link)
+                logger.debug("#%s News (%s) too old, skipping...", idx, link)
                 continue
 
             result.append(
@@ -72,7 +72,7 @@ async def parse_rss_feeds():
                     channel_id=channel.id,
                 )
             )
-            logging.info(f"#%s Sent to queue: %s", idx, title)
+            logging.debug(f"#%s Sent to queue: %s", idx, title)
 
         if result:
             process_news.delay([obj.model_dump() for obj in result])

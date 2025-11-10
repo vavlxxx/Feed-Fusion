@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     ES_PORT: int
     ES_INDEX_NAME: str = "news"
     ES_USE_KNN: bool = False
+    ES_RESET_INDEX: bool = False
 
     @property
     def get_elasticsearch_url(self):

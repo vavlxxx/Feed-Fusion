@@ -6,6 +6,8 @@ from src.utils.db_tools import DBManager
 from src.tasks.app import celery_app
 from src.schemas.news import AddNewsDTO, ParsedNewsDTO
 from src.db import sessionmaker_null_pool
+from src.utils.es_manager import ESManager
+from src.config import settings
 
 
 logger = logging.getLogger("src.tasks.processor")
@@ -59,3 +61,8 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
             )
             await db.rollback()
             raise self.retry(exc=exc, countdown=retry_countdown)
+
+        logger.info("Started indexing news in Elasticsearch...")
+        async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
+            data_dict: list[dict] = [obj.model_dump() for obj in data]
+            await es.add(data=data_dict)
