@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     def rabbit_url(self):
         return f"amqp://{self.RABBIT_USER}:{self.RABBIT_PASSWORD}@{self.RABBIT_HOST}:{self.RABBIT_PORT}"
 
+    ES_HOST: str
+    ES_PORT: int
+    ES_INDEX_NAME: str = "news"
+    ES_USE_KNN: bool = False
+
+    @property
+    def get_elasticsearch_url(self):
+        return f"http://{self.ES_HOST}:{self.ES_PORT}"
+
     JWT_EXPIRE_DELTA_ACCESS: timedelta = timedelta(minutes=15)
     JWT_EXPIRE_DELTA_REFRESH: timedelta = timedelta(days=30)
     JWT_ALGORITHM: str = "RS256"

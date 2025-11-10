@@ -35,6 +35,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     command: "poetry run celery --app=src.tasks.app:celery_app worker -l INFO"
 
   celery_beat:
@@ -50,6 +52,8 @@ services:
       rabbitmq:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      elasticsearch:
         condition: service_healthy
     command: "poetry run celery --app=src.tasks.app:celery_app beat -l INFO"
 
@@ -68,6 +72,30 @@ services:
       postgres:
         condition: service_healthy
     command: "poetry run python ./src/tasks/consumer.py"
+
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.0
+    container_name: ffusion_es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - "ffusion_net"
 
 
   postgres:
@@ -122,6 +150,7 @@ services:
 volumes:
   ffusion_rmq_data:
   ffusion_pg_db_data:
+  elasticsearch_data:
 
 networks:
   ffusion_net:
