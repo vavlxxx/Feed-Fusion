@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class Subscription(Base, PrimaryKeyMixin, TimingMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     channel_id: Mapped[int] = mapped_column(ForeignKey("channels.id"), nullable=False)
-    last_news_id: Mapped[int] = mapped_column(ForeignKey("news.id"), nullable=False)
+    last_news_id: Mapped[int] = mapped_column(nullable=False)
 
     user: Mapped["User"] = relationship(
         "User",
