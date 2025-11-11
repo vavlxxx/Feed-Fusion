@@ -49,9 +49,9 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
             data.append(AddNewsDTO(**news_item.model_dump(), content_hash=content_hash))
 
         try:
-            inserted_ids = await db.news.add_bulk_upsert(data)
+            inserted_news = await db.news.add_bulk_upsert(data)
             await db.commit()
-            logger.info("Saved into DB: %s items", len(inserted_ids))
+            logger.info("Saved into DB: %s items", len(inserted_news))
         except Exception as exc:
             retry_countdown = 60 * (2**self.request.retries)
             logger.info(
@@ -64,5 +64,5 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
 
         logger.info("Started indexing news in Elasticsearch...")
         async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
-            data_dict: list[dict] = [obj.model_dump() for obj in data]
+            data_dict: list[dict] = [obj.model_dump() for obj in inserted_news]
             await es.add(data=data_dict)

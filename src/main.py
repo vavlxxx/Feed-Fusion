@@ -31,14 +31,13 @@ from src.services.auth import AuthService
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger = get_logger("src")
 
-    await DBHealthChecker(engine=engine).check()
-
     await redis_manager.connect()
     logger.info("Successfully connected to Redis!")
 
     FastAPICache.init(RedisBackend(redis_manager._redis), prefix="fastapi-cache")
     logger.info("FastAPI Cache has been initialized!")
 
+    await DBHealthChecker(engine=engine).check()
     async with DBManager(session_factory=sessionmaker) as db:
         try:
             await AuthService(db).register_user(
@@ -56,6 +55,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
         await es.connection_is_stable()
         logger.info("Successfully connected to Elasticsearch!")
+        if settings.ES_RESET_INDEX:
+            await es._delete_index(index_name=settings.ES_INDEX_NAME)
+            logger.info("Deleted old index: %s", settings.ES_INDEX_NAME)
 
     if settings.MODE == "TEST":
         await bot.send_message(

@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence, Tuple
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -16,13 +16,25 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
     model = News
     mapper = NewsMapper
 
-    async def get_recent(self, channel_id: int, gt: int) -> list[NewsDTO]:
+    async def get_recent(
+        self,
+        channel_id: int,
+        gt: int | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[NewsDTO]:
         query = (
             select(self.model)
             .filter_by(channel_id=channel_id)
-            .filter(self.model.id > gt)
-            .order_by(self.model.id.asc())
+            .order_by(self.model.published.desc())
         )
+
+        if gt:
+            query = query.filter(self.model.id > gt)
+        if limit:
+            query = query.limit(limit)
+        if offset:
+            query = query.offset(offset)
 
         try:
             result = await self.session.execute(query)
@@ -40,11 +52,11 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
         result = await self.session.execute(stmt)
         return list(set(row[0] for row in result.all()))
 
-    async def add_bulk_upsert(self, data: Sequence[AddNewsDTO]) -> list[int]:
+    async def add_bulk_upsert(self, data: Sequence[AddNewsDTO]) -> list[NewsDTO]:
         add_obj_stmt = (
             pg_insert(self.model)
             .values([item.model_dump() for item in data])
-            .returning(self.model.id)
+            .returning(self.model)
         )
         excluded = add_obj_stmt.excluded
         add_obj_stmt = add_obj_stmt.on_conflict_do_nothing(
@@ -52,7 +64,7 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
         )
 
         result = await self.session.execute(add_obj_stmt)
-        return result.scalars().all()
+        return [self.mapper.map_to_domain_entity(obj) for obj in result.scalars().all()]
 
     async def get_all_filtered_with_pagination(
         self,

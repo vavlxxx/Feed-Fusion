@@ -39,9 +39,7 @@ class ESManager:
             raise
 
         logger.info("Successfully connected to Elasticsearch...")
-        if await self._client.indices.exists(index=self._index):
-            logger.debug("Creating new index: %s", self._index)
-            await self._create_index()
+        await self._create_index()
         return self
 
     async def _delete_index(self, index_name: str) -> ObjectApiResponse:
@@ -55,9 +53,6 @@ class ESManager:
             raise
 
     async def _create_index(self):
-        if settings.ES_RESET_INDEX:
-            await self._delete_index(self._index)
-
         config = {
             "settings": {
                 "index": {

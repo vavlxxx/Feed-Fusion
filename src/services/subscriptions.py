@@ -1,6 +1,6 @@
+from src.schemas.news import NewsDTO
 from src.services.base import BaseService
 from src.services.channels import ChannelService
-from src.services.news import NewsService
 from src.schemas.subscriptions import SubscriptionAddDTO
 from src.utils.exceptions import (
     ObjectExistsError,
@@ -24,7 +24,7 @@ class SubsService(BaseService):
 
         await ChannelService(self.db).get_channel_by_id(channel_id)
 
-        _, last_news = await NewsService(self.db).get_news_list(
+        last_news: list[NewsDTO] = await self.db.news.get_recent(
             limit=1,
             offset=0,
             channel_id=channel_id,
@@ -49,5 +49,6 @@ class SubsService(BaseService):
     async def delete_subscription(self, sub_id: int) -> None:
         try:
             await self.db.subs.delete(id=sub_id)
+            await self.db.commit()
         except ObjectNotFoundError as exc:
             raise SubNotFoundError from exc
