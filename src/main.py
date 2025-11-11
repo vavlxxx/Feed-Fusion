@@ -25,6 +25,7 @@ from src.config import settings
 from src.bot.bot import bot
 from src.schemas.auth import UserRegisterDTO
 from src.services.auth import AuthService
+from src.services.subscriptions import SubsService
 
 
 @asynccontextmanager
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await db.commit()
             logger.info("Successfully created admin user!")
         except UserExistsError:
+            await db.rollback()
             logger.info("Admin user already exists, skipping...")
 
     async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
@@ -59,7 +61,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await es._delete_index(index_name=settings.ES_INDEX_NAME)
             logger.info("Deleted old index: %s", settings.ES_INDEX_NAME)
 
-    if settings.MODE == "TEST":
+    if settings.MODE == "PROD":
         await bot.send_message(
             chat_id=settings.TELEGRAM_ADMIN_CONTACT,
             text="🚀 Feed Fusion app has been started!",

@@ -15,8 +15,8 @@ from src.utils.exceptions import (
 router = APIRouter(prefix="/news", tags=["News"])
 
 
-@cache(expire=300)
 @router.get("/")
+@cache(expire=60)
 async def get_all_news(
     db: DBDep,
     pagination: PaginationDep,

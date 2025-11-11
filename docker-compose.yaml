@@ -75,12 +75,12 @@ services:
 
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: ffusion_es
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
     ports:
       - "9200:9200"
     volumes:
@@ -90,6 +90,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+      start_period: 60s
     networks:
       - "ffusion_net"
 
@@ -153,6 +154,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s
 
 volumes:
   ffusion_rmq_data:

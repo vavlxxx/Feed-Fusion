@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from fastapi_cache.decorator import cache
 
 from src.api.v1.dependencies.auth import AdminAllowedDep
 from src.schemas.channels import ChannelAddDTO, ChannelDTO, ChannelUpdateDTO
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/channels", tags=["Channels"])
 
 
 @router.get("/")
+@cache(expire=60)
 async def get_channels(
     db: DBDep,
 ) -> dict[str, str | int | list[ChannelDTO]]:

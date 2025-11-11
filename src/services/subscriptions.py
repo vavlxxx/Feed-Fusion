@@ -1,7 +1,7 @@
 from src.schemas.news import NewsDTO
 from src.services.base import BaseService
 from src.services.channels import ChannelService
-from src.schemas.subscriptions import SubscriptionAddDTO
+from src.schemas.subscriptions import SubscriptionAddDTO, SubscriptionUpdateDTO
 from src.utils.exceptions import (
     ObjectExistsError,
     ObjectNotFoundError,
