@@ -20,15 +20,17 @@ router = APIRouter(prefix="/news", tags=["News"])
 async def get_all_news(
     db: DBDep,
     pagination: PaginationDep,
+    search_after: str | None = Query(None),
     channel_id: int | None = Query(None),
     query: str | None = Query(None),
 ):
     try:
-        total_count, news = await NewsService(db).get_news_list(
+        total_count, news, search_after, offset = await NewsService(db).get_news_list(
             query_string=query,
-            offset=pagination.offset,
+            # offset=pagination.offset,
             limit=pagination.limit,
             channel_id=channel_id,
+            search_after=search_after,
         )
     except ValueOutOfRangeError as exc:
         raise ValueOutOfRangeHTTPError(detail=exc.detail) from exc
@@ -36,10 +38,12 @@ async def get_all_news(
         raise ChannelNotFoundHTTPError from exc
 
     return {
-        "page": pagination.page,
+        "page": offset // pagination.limit + 1,
         "per_page": pagination.limit,
+        "has_next": len(news) == pagination.limit,
         "total_count": total_count,
+        "cursor": search_after,
         "total_pages": math.ceil(total_count / pagination.limit),
-        "offset": pagination.offset,
+        "offset": offset,
         "data": news,
     }

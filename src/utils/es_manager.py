@@ -53,6 +53,9 @@ class ESManager:
             raise
 
     async def _create_index(self):
+        if await self._client.indices.exists(index=self._index):
+            return
+
         config = {
             "settings": {
                 "index": {
@@ -167,11 +170,12 @@ class ESManager:
 
     async def search(
         self,
+        limit: int,
         query_string: str | None = None,
         channel_id: int | None = None,
-        limit: int = 15,
-        offset: int = 0,
-    ) -> tuple[int, list[dict]]:
+        search_after: list | None = None,
+        # offset: int = 0,
+    ) -> tuple[int, list[dict], list | None]:
 
         must_clauses = {"match_all": {}}
         if query_string:
@@ -217,7 +221,8 @@ class ESManager:
         query_map = {
             "query": {"bool": {"must": must_clauses, "filter": filter_clauses}},
             "size": limit,
-            "from": offset,
+            "search_after": search_after,
+            # "from": offset,
             "sort": [{"published": {"order": "desc"}}],
             "track_total_hits": True,
         }
@@ -231,7 +236,11 @@ class ESManager:
         total = response.get("hits", {}).get("total", {}).get("value", 0)
         results = [hit["_source"] for hit in hits]
 
-        return total, results
+        last_hit = None
+        if hits:
+            last_hit = hits[-1]["sort"]
+
+        return total, results, last_hit
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         await self._client.close()
