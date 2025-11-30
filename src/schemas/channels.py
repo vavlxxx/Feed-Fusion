@@ -8,7 +8,7 @@ from src.schemas.base import BaseDTO
 class ChannelAddDTO(BaseDTO):
     title: str
     link: str
-    description: str | None
+    description: str | None = None
 
 
 class ChannelUpdateDTO(BaseDTO):

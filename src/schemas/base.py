@@ -8,7 +8,7 @@ class BaseDTO(BaseModel):
         from_attributes=True,
         json_encoders={datetime: lambda v: v.isoformat()},
         strict=True,
-        str_min_length=1,
+        # str_min_length=1,
     )
 
 

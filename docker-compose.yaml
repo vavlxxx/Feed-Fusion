@@ -17,6 +17,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     command: "poetry run python ./src/gunicorn/run.py"
     volumes:
       - ./logs:/app/logs
@@ -94,17 +96,17 @@ services:
     networks:
       - "ffusion_net"
 
-  kibana:
-    image: docker.elastic.co/kibana/kibana:9.2.0
-    container_name: ffusion_kibana
-    ports:
-      - "5601:5601"
-    networks:
-      - "ffusion_net"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://ffusion_es:9200
-    depends_on:
-      - elasticsearch
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:9.2.0
+  #   container_name: ffusion_kibana
+  #   ports:
+  #     - "5601:5601"
+  #   networks:
+  #     - "ffusion_net"
+  #   environment:
+  #     - ELASTICSEARCH_HOSTS=http://ffusion_es:9200
+  #   depends_on:
+  #     - elasticsearch
 
   postgres:
     container_name: ffusion_db
