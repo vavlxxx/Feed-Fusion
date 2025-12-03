@@ -1,23 +1,22 @@
 from src.schemas.news import NewsDTO
+from src.schemas.subscriptions import SubscriptionAddDTO, SubscriptionDTO
 from src.services.base import BaseService
 from src.services.channels import ChannelService
-from src.schemas.subscriptions import SubscriptionAddDTO, SubscriptionUpdateDTO
 from src.utils.exceptions import (
-    ObjectExistsError,
-    ObjectNotFoundError,
-    SubNotFoundError,
     EmptyChannelError,
     MisingTelegramError,
+    ObjectExistsError,
+    ObjectNotFoundError,
     SubExistsError,
+    SubNotFoundError,
 )
 
 
 class SubsService(BaseService):
-
-    async def get_subscriptions(self, uid: str) -> list[str]:
+    async def get_subscriptions(self, uid: str) -> list[SubscriptionDTO]:
         return await self.db.subs.get_all_filtered(user_id=uid)
 
-    async def create_subscription(self, uid: str, channel_id: int) -> str:
+    async def create_subscription(self, uid: int, channel_id: int) -> SubscriptionDTO:
         user = await self.db.auth.get_one(id=uid)
         if user.telegram_id is None:
             raise MisingTelegramError
@@ -39,7 +38,7 @@ class SubsService(BaseService):
             user_id=uid,
         )
         try:
-            sub = await self.db.subs.add(data)
+            sub: SubscriptionDTO = await self.db.subs.add(data)
         except ObjectExistsError as exc:
             raise SubExistsError from exc
 

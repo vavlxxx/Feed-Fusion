@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     TITLE: str = "Feed Fusion"
     MODE: Literal["TEST", "DEV", "PROD"] = "DEV"
     EMPTY_TEXT: str = "Отсутствует"
-    TIMEZONE: int = 5
+    TIMEZONE: int = +5
     PREFERED_HOURS_PERIOD: int = 24
 
     ADMIN_USERNAME: str
@@ -98,4 +98,4 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings()
+settings = Settings()  # type: ignore

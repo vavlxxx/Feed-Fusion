@@ -1,22 +1,22 @@
 from fastapi import APIRouter
 
-from src.schemas.subscriptions import SubscriptionDTO
-from src.api.v1.dependencies.db import DBDep
 from src.api.v1.dependencies.auth import SubByAccess
+from src.api.v1.dependencies.db import DBDep
+from src.schemas.subscriptions import SubscriptionDTO
 from src.services.subscriptions import SubsService
 from src.utils.exceptions import (
     ChannelNotFoundError,
     ChannelNotFoundHTTPError,
     EmptyChannelError,
     EmptyChannelHTTPError,
-    SubExistsError,
-    SubExistsErrorHTTPError,
-    ValueOutOfRangeError,
-    ValueOutOfRangeHTTPError,
-    SubNotFoundError,
-    SubNotFoundHTTPError,
     MisingTelegramError,
     MisingTelegramErrorHTTPError,
+    SubExistsError,
+    SubExistsErrorHTTPError,
+    SubNotFoundError,
+    SubNotFoundHTTPError,
+    ValueOutOfRangeError,
+    ValueOutOfRangeHTTPError,
 )
 
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
@@ -42,7 +42,8 @@ async def create_subscription(
 ):
     try:
         sub: SubscriptionDTO = await SubsService(db).create_subscription(
-            uid=uid, channel_id=channel_id
+            uid=int(uid),
+            channel_id=channel_id,
         )
     except ChannelNotFoundError as exc:
         raise ChannelNotFoundHTTPError from exc

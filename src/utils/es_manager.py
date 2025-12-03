@@ -1,5 +1,5 @@
-import sys
 import logging
+import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -9,7 +9,6 @@ from elasticsearch import AsyncElasticsearch
 
 from src.config import settings
 
-
 logger = logging.getLogger("src.utils.es_manager")
 
 
@@ -17,14 +16,15 @@ class ESManager:
     def __init__(self, index_name: str):
         self._dsn: str = settings.get_elasticsearch_url
         self._index: str = index_name
-        self._client: AsyncElasticsearch | None = None
 
     async def connection_is_stable(self) -> bool:
+        if getattr(self, "_client", None) is None:
+            return False
         return await self._client.ping()
 
     async def __aenter__(self) -> "ESManager":
         try:
-            self._client = AsyncElasticsearch(
+            self._client: AsyncElasticsearch = AsyncElasticsearch(
                 self._dsn,
                 request_timeout=30,
                 max_retries=5,
@@ -42,7 +42,7 @@ class ESManager:
         await self._create_index()
         return self
 
-    async def _delete_index(self, index_name: str) -> ObjectApiResponse:
+    async def delete_index(self, index_name: str) -> ObjectApiResponse:
         try:
             return await self._client.indices.delete(
                 index=index_name,
@@ -137,7 +137,8 @@ class ESManager:
         try:
             return await self._client.options(ignore_status=400).indices.create(
                 index=self._index,
-                body=config,
+                mappings=config["mappings"],
+                settings=config["settings"],
             )
         except Exception as e:
             logger.error("Failed to create index: %s; error: %s", self._index, e)
@@ -176,7 +177,6 @@ class ESManager:
         search_after: list | None = None,
         # offset: int = 0,
     ) -> tuple[int, list[dict], list | None]:
-
         must_clauses = {"match_all": {}}
         if query_string:
             must_clauses = {
@@ -229,7 +229,8 @@ class ESManager:
 
         response = await self._client.search(
             index=self._index,
-            body=query_map,
+            **query_map,
+            # body=query_map,
         )
 
         hits = response.get("hits", {}).get("hits", [])

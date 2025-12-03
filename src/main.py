@@ -1,31 +1,28 @@
 import sys
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
-
 
 sys.path.append(str(Path(__file__).parent.parent))
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
-
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 
-from src.db import engine, sessionmaker
 from src.api import router as main_router
-from src.utils.exceptions import UserExistsError
-from src.utils.redis_manager import redis_manager
-from src.utils.log_config import configurate_logging, get_logger
-from src.utils.db_tools import DBHealthChecker, DBManager
-from src.utils.es_manager import ESManager
 from src.api.docs import router as docs_router
-from src.config import settings
 from src.bot.bot import bot
+from src.config import settings
+from src.db import engine, sessionmaker
 from src.schemas.auth import UserRegisterDTO
 from src.services.auth import AuthService
-from src.services.subscriptions import SubsService
+from src.utils.db_tools import DBHealthChecker, DBManager
+from src.utils.es_manager import ESManager
+from src.utils.exceptions import UserExistsError
+from src.utils.log_config import configurate_logging, get_logger
+from src.utils.redis_manager import redis_manager
 
 
 @asynccontextmanager
@@ -58,7 +55,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await es.connection_is_stable()
         logger.info("Successfully connected to Elasticsearch!")
         if settings.ES_RESET_INDEX:
-            await es._delete_index(index_name=settings.ES_INDEX_NAME)
+            await es.delete_index(index_name=settings.ES_INDEX_NAME)
             logger.info("Deleted old index: %s", settings.ES_INDEX_NAME)
 
     if settings.MODE == "PROD":

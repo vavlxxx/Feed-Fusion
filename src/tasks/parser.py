@@ -1,14 +1,17 @@
 import asyncio
 import logging
-import feedparser
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import cast
 
+import feedparser
+from celery import Task
+
+from src.config import settings
+from src.db import sessionmaker_null_pool
 from src.schemas.news import ParsedNewsDTO
 from src.tasks.app import celery_app
 from src.tasks.processor import process_news
 from src.utils.db_tools import DBManager
-from src.db import sessionmaker_null_pool
-from src.config import settings
 
 logger = logging.getLogger("src.tasks.parser")
 
@@ -34,7 +37,7 @@ def parse_date(date: str) -> datetime:
 
 def parse_text(item: feedparser.FeedParserDict, key: str):
     raw = item.get(key)
-    text = (raw.strip() if raw else "") or settings.EMPTY_TEXT
+    text = (raw.strip() if isinstance(raw, str) else "") or settings.EMPTY_TEXT
     return text
 
 
@@ -45,14 +48,15 @@ async def parse_rss_feeds():
 
     for channel in channels:
         logger.info("Feed %s", channel.link)
-        feed = feedparser.parse(channel.link)
-        source_name = feed.feed.get("title", settings.EMPTY_TEXT)
+        feed: feedparser.FeedParserDict = feedparser.parse(channel.link)
+        source_name = feed.feed.get("title", settings.EMPTY_TEXT)  # type: ignore
         logger.info("Source: %s", source_name)
         logger.info("News quantity: %s", len(feed.entries))
 
         result = []
-        for idx, entry in enumerate(feed.entries, 1):
-            published: datetime = parse_date(entry.get("published"))
+        entries = feed.entries
+        for idx, entry in enumerate(entries, 1):
+            published: datetime = parse_date(entry.get("published"))  # type: ignore
             link: str = parse_text(entry, "link")
             title: str = parse_text(entry, "title")
             if published < datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
@@ -63,7 +67,7 @@ async def parse_rss_feeds():
 
             result.append(
                 ParsedNewsDTO(
-                    image=get_image_from_links(entry.get("links", [])),
+                    image=get_image_from_links(entry.get("links", [])),  # type: ignore
                     title=title,
                     link=link,
                     summary=parse_text(entry, "summary"),
@@ -72,7 +76,8 @@ async def parse_rss_feeds():
                     channel_id=channel.id,
                 )
             )
-            logging.debug(f"#%s Sent to queue: %s", idx, title)
+            logging.debug("#%s Sent to queue: %s", idx, title)
 
         if result:
-            process_news.delay([obj.model_dump() for obj in result])
+            process_news_task = cast(Task, process_news)
+            process_news_task.delay([obj.model_dump() for obj in result])

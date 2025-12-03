@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Response
 
-from src.api.v1.dependencies.auth import IsAdminDep, SubByRefresh, SubByAccess
+from src.api.v1.dependencies.auth import SubByRefresh, SubByAccess
 from src.api.v1.dependencies.db import DBDep
 from src.api.v1.responses.auth import (
     AUTH_LOGIN_RESPONSES,

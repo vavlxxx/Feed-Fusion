@@ -1,6 +1,6 @@
+import json
 import logging
 import logging.config
-import json
 import os
 from pathlib import Path
 
@@ -13,7 +13,7 @@ def get_logging_config() -> dict:
     return config
 
 
-def configurate_logging() -> logging.Logger:
+def configurate_logging():
     config = get_logging_config()
     logging.config.dictConfig(config)
 

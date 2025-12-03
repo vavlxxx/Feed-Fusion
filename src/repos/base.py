@@ -62,11 +62,11 @@ class BaseRepo(Generic[ModelType, SchemaType]):
 
         return self.mapper.map_to_domain_entity(obj)
 
-    async def add_bulk(self, data: Sequence[BaseDTO]) -> list[int]:
+    async def add_bulk(self, data: Sequence[BaseDTO]) -> Sequence[int]:
         add_obj_stmt = (
             insert(self.model)
             .values([item.model_dump() for item in data])
-            .returning(self.model.id)
+            .returning(self.model.id)  # type: ignore
         )
         result = await self.session.execute(add_obj_stmt)
         return result.scalars().all()
@@ -95,7 +95,7 @@ class BaseRepo(Generic[ModelType, SchemaType]):
 
     async def edit(
         self,
-        data: SchemaType,
+        data: BaseDTO,
         exclude_unset=True,
         exclude_fields=None,
         ensure_existence=True,
@@ -131,7 +131,7 @@ class BaseRepo(Generic[ModelType, SchemaType]):
                 raise ValueOutOfRangeError(detail=exc.orig.__cause__.args[0]) from exc
             raise exc
 
-        if ensure_existence and result.rowcount == 0:
+        if ensure_existence and getattr(result, "rowcount", 0) == 0:
             raise ObjectNotFoundError
 
     async def delete_all(self) -> None:

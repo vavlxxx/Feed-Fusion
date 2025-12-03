@@ -1,14 +1,14 @@
-from typing import Sequence, Tuple
+from typing import Sequence
 
+from asyncpg import DataError
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError
-from asyncpg import DataError
 
-from src.schemas.news import AddNewsDTO, NewsDTO
-from src.repos.base import BaseRepo
 from src.models.news import News
+from src.repos.base import BaseRepo
 from src.repos.mappers.mappers import NewsMapper
+from src.schemas.news import AddNewsDTO, NewsDTO
 from src.utils.exceptions import ValueOutOfRangeError
 
 
@@ -58,8 +58,8 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
             .values([item.model_dump() for item in data])
             .returning(self.model)
         )
-        excluded = add_obj_stmt.excluded
-        add_obj_stmt = add_obj_stmt.on_conflict_do_nothing(
+        # excluded = add_obj_stmt.excluded
+        add_obj_stmt = add_obj_stmt.on_conflict_do_nothing(  # type: ignore[attr-defined]
             constraint="uq_news_content_hash",
         )
 

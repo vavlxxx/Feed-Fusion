@@ -1,11 +1,10 @@
 import base64
 import json
 
-from src.schemas.news import NewsDTO
-from src.services.base import BaseService
-from src.utils.exceptions import ChannelNotFoundError, ObjectNotFoundError
-from src.utils.es_manager import ESManager
 from src.config import settings
+from src.services.base import BaseService
+from src.utils.es_manager import ESManager
+from src.utils.exceptions import ChannelNotFoundError, ObjectNotFoundError
 
 
 class CursorEncoder:
@@ -38,7 +37,7 @@ class NewsService(BaseService):
         query_string: str | None = None,
         channel_id: int | None = None,
         search_after: str | None = None,
-    ) -> tuple[int, list[NewsDTO], str | None, int]:
+    ) -> tuple[int, list[dict], str | None, int]:
         try:
             if channel_id is not None:
                 await self.db.channels.get_one(id=channel_id)

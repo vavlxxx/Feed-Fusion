@@ -13,7 +13,7 @@ class RedisManager:
 
     async def connect(self) -> Redis:
         self._redis = Redis(host=self.host, port=self.port)
-        await self._redis.ping()
+        await self._redis.ping()  # type: ignore
         return self._redis
 
     async def set(self, key: Any, value: Any, ex: int | None = 120):

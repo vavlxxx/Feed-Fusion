@@ -1,25 +1,23 @@
+import asyncio
 import json
 import logging
-import asyncio
 import random
 import sys
-
 from datetime import datetime
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from pika import BlockingConnection
-from pika.spec import BasicProperties, Basic
-from pika.channel import Channel
-from pika.adapters import BlockingConnection
 from pika.adapters.blocking_connection import BlockingChannel
+from pika.channel import Channel
+from pika.spec import Basic, BasicProperties
 
-from src.schemas.news import NewsDTO
 from src.bot.bot import bot
 from src.config import settings
-from src.utils.texts import format_message
+from src.schemas.news import NewsDTO
 from src.utils.rmq_manager import RMQManager
+from src.utils.texts import format_message
 
 logger = logging.getLogger("src.tasks.telegram_consumer")
 
@@ -88,7 +86,7 @@ class RMQTelegramNewsConsumer(RMQManager):
             subscription_id = message["subscription_id"]
             telegram_id = message["telegram_id"]
             news_data = message["news"]
-            channel_id = message["channel_id"]
+            # channel_id = message["channel_id"]
 
             if isinstance(news_data.get("published"), str):
                 news_data["published"] = self._parse_datetime(news_data["published"])
@@ -105,6 +103,9 @@ class RMQTelegramNewsConsumer(RMQManager):
                 news.id,
                 telegram_id,
             )
+
+            if not self.loop:
+                self.loop = asyncio.new_event_loop()
 
             success = self.loop.run_until_complete(
                 self.send_news_to_telegram(telegram_id, news)
@@ -156,11 +157,11 @@ class RMQTelegramNewsConsumer(RMQManager):
     async def send_news_to_telegram(self, telegram_id: str, news: NewsDTO) -> bool:
         try:
             message = format_message(
-                news.title,
-                news.published,
-                news.summary,
-                news.link,
-                news.source,
+                title=news.title,
+                published=news.published,
+                summary=news.summary,
+                link=news.link,
+                source=news.source,
             )
 
             if news.image:

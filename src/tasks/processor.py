@@ -2,13 +2,12 @@ import asyncio
 import hashlib
 import logging
 
-from src.utils.db_tools import DBManager
-from src.tasks.app import celery_app
-from src.schemas.news import AddNewsDTO, ParsedNewsDTO
-from src.db import sessionmaker_null_pool
-from src.utils.es_manager import ESManager
 from src.config import settings
-
+from src.db import sessionmaker_null_pool
+from src.schemas.news import AddNewsDTO, ParsedNewsDTO
+from src.tasks.app import celery_app
+from src.utils.db_tools import DBManager
+from src.utils.es_manager import ESManager
 
 logger = logging.getLogger("src.tasks.processor")
 
@@ -18,8 +17,8 @@ def process_news(self, news_items: list[dict]) -> None:
     logger.info("Started saving news into DB...")
     if not news_items:
         return
-    news_items = [ParsedNewsDTO(**item) for item in news_items]
-    asyncio.run(save_news(self, news_items))
+    news_items_: list[ParsedNewsDTO] = [ParsedNewsDTO(**item) for item in news_items]
+    asyncio.run(save_news(self, news_items_))
 
 
 async def save_news(self, news_items: list[ParsedNewsDTO]):
@@ -46,7 +45,7 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
 
         data = []
         for news_item, content_hash in unique_items:
-            data.append(AddNewsDTO(**news_item.model_dump(), content_hash=content_hash))
+            data.append(AddNewsDTO(**news_item.model_dump(), content_hash=content_hash))  # type: ignore
 
         try:
             inserted_news = await db.news.add_bulk_upsert(data)

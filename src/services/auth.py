@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta
 
-from fastapi import HTTPException, Response
 import jwt
+from fastapi import HTTPException, Response
 from jwt.exceptions import ExpiredSignatureError
 
-from src.utils.hashing import HashManager
-from src.schemas.auth import UserRole, UserUpdateDTO, UserWithPasswordDTO
 from src.config import settings
 from src.schemas.auth import (
     CreatedTokenDTO,
@@ -16,6 +14,9 @@ from src.schemas.auth import (
     TokenType,
     UserAddDTO,
     UserDTO,
+    UserRole,
+    UserUpdateDTO,
+    UserWithPasswordDTO,
 )
 from src.services.base import BaseService
 from src.utils.db_tools import DBManager
@@ -26,6 +27,7 @@ from src.utils.exceptions import (
     UserExistsError,
     UserNotFoundError,
 )
+from src.utils.hashing import HashManager
 
 
 class AuthService(BaseService, HashManager):
@@ -166,6 +168,10 @@ class AuthService(BaseService, HashManager):
             raise UserNotFoundError from exc
 
     async def update_profile(self, uid: str, data: UserUpdateDTO) -> UserDTO:
-        await self.db.auth.edit(id=uid, data=data, ensure_existence=False)
+        await self.db.auth.edit(
+            id=uid,
+            data=data,
+            ensure_existence=False,
+        )
         await self.db.commit()
         return await self.db.auth.get_one(id=uid)

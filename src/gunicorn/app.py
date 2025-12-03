@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from gunicorn.app.base import BaseApplication
+
 from src.utils.log_config import get_logging_config
 
 
@@ -32,8 +33,8 @@ class GunicornApp(BaseApplication):
 def get_app_options(
     host: str,
     port: int,
-    access_log: str,
-    error_log: str,
+    access_log: str | None,
+    error_log: str | None,
     workers: int,
     timeout: int,
     workers_class: str,
