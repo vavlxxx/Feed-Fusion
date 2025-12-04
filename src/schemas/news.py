@@ -29,3 +29,32 @@ class NewsDTO(AddNewsDTO):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class PagingInfo(BaseDTO):
+    page: int
+    per_page: int
+    has_next: bool
+    total_count: int
+    cursor: str | None = None
+    recent_first: bool
+    total_pages: int
+    offset: int
+
+
+class NewsResponseDTO(BaseDTO):
+    id: int
+    image: str | None
+    title: str
+    link: str
+    summary: str
+    source: str
+    channel_id: int
+    published: str
+    created_at: str
+    updated_at: str
+
+
+class NewsResponse(BaseDTO):
+    meta: PagingInfo
+    news: list[NewsResponseDTO]

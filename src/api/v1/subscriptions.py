@@ -19,27 +19,32 @@ from src.utils.exceptions import (
     ValueOutOfRangeHTTPError,
 )
 
-router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
+router = APIRouter(prefix="/subscriptions", tags=["Подписки"])
 
 
-@router.get("/")
+@router.get("/", summary="Получить все подписки")
 async def get_subscriptions(
     db: DBDep,
     uid: SubByAccess,
 ):
+    """
+    ## 📺 Возвращает подписки на каналы авторизованного пользователя
+    """
     subs = await SubsService(db).get_subscriptions(uid=uid)
     return {
-        "message": "Subscriptions found successfully",
         "data": subs,
     }
 
 
-@router.post("/")
+@router.post("/", summary="Добавить подписку")
 async def create_subscription(
     db: DBDep,
     uid: SubByAccess,
     channel_id: int,
 ):
+    """
+    ## 📺 Подписаться на новостной канал
+    """
     try:
         sub: SubscriptionDTO = await SubsService(db).create_subscription(
             uid=int(uid),
@@ -56,17 +61,19 @@ async def create_subscription(
     except ValueOutOfRangeError as exc:
         raise ValueOutOfRangeHTTPError(detail=exc.detail) from exc
     return {
-        "message": "Subscription created successfully",
         "data": sub,
     }
 
 
-@router.delete("/")
+@router.delete("/", summary="Удалить подписку")
 async def delete_subscription(
     db: DBDep,
     _: SubByAccess,
     sub_id: int,
 ):
+    """
+    ## 📺 Отписаться от новостного канала
+    """
     try:
         await SubsService(db).delete_subscription(sub_id=sub_id)
     except SubNotFoundError as exc:

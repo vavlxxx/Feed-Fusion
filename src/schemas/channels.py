@@ -28,3 +28,8 @@ class ChannelDTO(ChannelAddDTO):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class ChannelsResponseDTO(BaseDTO):
+    total: int
+    data: list[ChannelDTO]

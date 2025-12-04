@@ -37,6 +37,7 @@ class NewsService(BaseService):
         query_string: str | None = None,
         channel_id: int | None = None,
         search_after: str | None = None,
+        recent_first: bool = True,
     ) -> tuple[int, list[dict], str | None, int]:
         try:
             if channel_id is not None:
@@ -53,6 +54,7 @@ class NewsService(BaseService):
                 channel_id=channel_id,
                 limit=limit,
                 search_after=sort_param,
+                recent_first=recent_first,
                 # offset=offset,
             )
 

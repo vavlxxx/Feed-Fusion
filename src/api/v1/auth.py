@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Response
 
-from src.api.v1.dependencies.auth import SubByRefresh, SubByAccess
+from src.api.v1.dependencies.auth import SubByAccess, SubByRefresh
 from src.api.v1.dependencies.db import DBDep
 from src.api.v1.responses.auth import (
     AUTH_LOGIN_RESPONSES,
@@ -27,13 +27,14 @@ from src.utils.exceptions import (
 
 router = APIRouter(
     prefix="/auth",
-    tags=["Authentication and Authorization"],
+    tags=["Аутентификация и авторизация"],
 )
 
 
 @router.post(
     path="/login/",
     responses=AUTH_LOGIN_RESPONSES,
+    summary="Войти в аккаунт",
 )
 async def login(
     db: DBDep,
@@ -41,7 +42,7 @@ async def login(
     response: Response,
 ):
     """
-    ## 🔒 Login to existing user account
+    ## 🔒 Войти в существующий аккаунт
     """
     try:
         token_response: TokenResponseDTO = await AuthService(db).login_user(
@@ -57,15 +58,14 @@ async def login(
 @router.post(
     path="/register/",
     responses=AUTH_REGISTER_RESPONSES,
+    summary="Зарегистрироваться",
 )
 async def register(
     db: DBDep,
     register_data: RegisterData,
-):
+) -> UserDTO:
     """
-    ## 🔒 Register new user
-
-    Only username and password are required
+    ## 🔒 Зарегистрировать нового пользователя
     """
     try:
         return await AuthService(db).register_user(
@@ -78,15 +78,14 @@ async def register(
 @router.get(
     path="/profile/",
     responses=AUTH_PROFILE_RESPONSES,
+    summary="Получить профиль",
 )
 async def get_profile(
     db: DBDep,
     uid: SubByAccess,
 ) -> UserDTO:
     """
-    ## 🔒 Authorized user profile
-
-    Example of data which can be stored in User model of database
+    ## 🔒 Профиль авторизованного пользователя
     """
     try:
         return await AuthService(db).get_profile(uid=uid)
@@ -96,6 +95,8 @@ async def get_profile(
 
 @router.put(
     path="/profile/",
+    responses=AUTH_PROFILE_RESPONSES,
+    summary="Обновить профиль",
 )
 async def update_profile(
     db: DBDep,
@@ -103,9 +104,7 @@ async def update_profile(
     data: UserUpdateDTO,
 ) -> UserDTO:
     """
-    ## 👤 Update profile
-
-    Provide at least one non-empty field to update your plofile data
+    ## 👤 Обновить профиль пользователя
     """
     profile = await AuthService(db).update_profile(uid=uid, data=data)
     return profile
@@ -114,6 +113,7 @@ async def update_profile(
 @router.get(
     path="/refresh/",
     responses=AUTH_REFRESH_RESPONSES,
+    summary="Обновить токены",
 )
 async def refresh(
     db: DBDep,
@@ -121,9 +121,7 @@ async def refresh(
     response: Response,
 ) -> TokenResponseDTO:
     """
-    ## 🗝️ Get new access and refresh tokens
-
-    Authorized user can get new access and refresh tokens by restoring refresh token from **http only** cookie `refresh_token`
+    ## 🗝️ Получить новые access и refresh токены
     """
     token_response: TokenResponseDTO = await AuthService(db).update_tokens(
         uid=uid,

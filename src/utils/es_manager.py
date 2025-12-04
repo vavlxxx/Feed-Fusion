@@ -175,6 +175,7 @@ class ESManager:
         query_string: str | None = None,
         channel_id: int | None = None,
         search_after: list | None = None,
+        recent_first: bool = True,
         # offset: int = 0,
     ) -> tuple[int, list[dict], list | None]:
         must_clauses = {"match_all": {}}
@@ -223,7 +224,7 @@ class ESManager:
             "size": limit,
             "search_after": search_after,
             # "from": offset,
-            "sort": [{"published": {"order": "desc"}}],
+            "sort": [{"published": {"order": "desc" if recent_first else "asc"}}],
             "track_total_hits": True,
         }
 

@@ -21,7 +21,7 @@ def get_pagination_params(
         Query(
             ge=1,
             le=15,
-            description="Максимальное количество шаблонов на одной странице",
+            description="Максимальное количество новостей на одной странице",
         ),
     ] = 15,
 ) -> PaginationParamsDTO:
