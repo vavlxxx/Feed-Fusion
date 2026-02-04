@@ -290,25 +290,28 @@ function renderNews(items, append = false) {
   const fragment = document.createDocumentFragment();
   items.forEach((item) => {
     const card = document.createElement("article");
-    card.className = "card";
+    card.className = "news-card";
 
     const img = document.createElement("img");
     img.src = item.image || PLACEHOLDER_IMAGE;
     img.alt = item.title || "news";
 
     const title = document.createElement("h3");
+    title.className = "news-title";
     title.textContent = item.title || "Без названия";
 
     const summary = document.createElement("p");
-    summary.textContent = truncate(item.summary || "", 180);
+    summary.className = "news-summary";
+    const summaryText = truncate(item.summary || "", 180);
+    summary.textContent = summaryText ? summaryText : "Отсутствует";
 
     const meta = document.createElement("div");
-    meta.className = "meta";
+    meta.className = "news-meta";
     const channelName = state.channelMap.get(item.channel_id)?.title || `Канал #${item.channel_id}`;
-    meta.textContent = `Источник: ${item.source || ""} · ${channelName} · ${formatDate(item.published)}`;
+    meta.textContent = `Источник: ${item.source || channelName} · ${formatDate(item.published)}`;
 
     const actions = document.createElement("div");
-    actions.className = "actions";
+    actions.className = "news-actions";
     const link = document.createElement("a");
     link.href = item.link;
     link.target = "_blank";
@@ -317,11 +320,20 @@ function renderNews(items, append = false) {
     link.textContent = "Открыть источник";
     actions.appendChild(link);
 
-    card.appendChild(img);
-    card.appendChild(title);
-    card.appendChild(summary);
-    card.appendChild(meta);
-    card.appendChild(actions);
+    const imgContainer = document.createElement("div");
+    imgContainer.className = "news-image";
+    imgContainer.appendChild(img);
+
+    const body = document.createElement("div");
+    body.className = "news-body";
+
+    body.appendChild(meta);
+    body.appendChild(title);
+    body.appendChild(summary);
+    body.appendChild(actions);
+
+    card.appendChild(imgContainer);
+    card.appendChild(body);
     fragment.appendChild(card);
   });
   dom.newsGrid.appendChild(fragment);
@@ -346,7 +358,7 @@ function renderChannels() {
   const fragment = document.createDocumentFragment();
   state.channels.forEach((channel) => {
     const card = document.createElement("article");
-    card.className = "card";
+    card.className = "panel channel-card";
 
     const title = document.createElement("h3");
     title.textContent = channel.title;
@@ -409,7 +421,7 @@ function renderSubscriptions() {
   state.subscriptions.forEach((sub) => {
     const channel = state.channelMap.get(sub.channel_id);
     const card = document.createElement("article");
-    card.className = "card";
+    card.className = "panel sub-card";
 
     const title = document.createElement("h3");
     title.textContent = channel?.title || `Канал #${sub.channel_id}`;
@@ -477,7 +489,7 @@ function renderAdminChannels() {
   const fragment = document.createDocumentFragment();
   state.channels.forEach((channel) => {
     const wrapper = document.createElement("div");
-    wrapper.className = "card";
+    wrapper.className = "panel admin-card";
 
     const title = document.createElement("h3");
     title.textContent = `${channel.title} (#${channel.id})`;

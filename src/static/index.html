@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Golos+Text:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/static/styles.css" />
@@ -88,33 +88,38 @@
         </div>
 
         <div class="filters">
-          <label class="field">
-            <span>Поиск</span>
-            <input type="search" id="searchInput" placeholder="Ключевые слова" />
-          </label>
-          <label class="field">
-            <span>Канал</span>
-            <select id="channelSelect"></select>
-          </label>
-          <label class="field">
-            <span>Сортировка</span>
-            <select id="sortSelect">
-              <option value="true" selected>Сначала новые</option>
-              <option value="false">Сначала старые</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Размер страницы</span>
-            <select id="limitSelect">
-              <option value="6">6</option>
-              <option value="9" selected>9</option>
-              <option value="12">12</option>
-              <option value="15">15</option>
-            </select>
-          </label>
-          <div class="filter-actions">
-            <button class="btn ghost" id="resetFilters">Сбросить</button>
-            <button class="btn accent" id="applyFilters">Применить</button>
+          <div class="filters-top">
+            <label class="field">
+              <span>Поиск</span>
+              <input type="search" id="searchInput" placeholder="Ключевые слова" />
+            </label>
+          </div>
+          <div class="filters-bottom">
+            <label class="field">
+              <span>Канал</span>
+              <select id="channelSelect"></select>
+            </label>
+            <label class="field">
+              <span>Сортировка</span>
+              <select id="sortSelect">
+                <option value="true" selected>Сначала новые</option>
+                <option value="false">Сначала старые</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Размер страницы</span>
+              <select id="limitSelect">
+                <option value="3">3</option>
+                <option value="6">6</option>
+                <option value="9" selected>9</option>
+                <option value="12">12</option>
+                <option value="15">15</option>
+              </select>
+            </label>
+            <div class="filter-actions">
+              <button class="btn ghost" id="resetFilters">Сбросить</button>
+              <button class="btn accent" id="applyFilters">Применить</button>
+            </div>
           </div>
         </div>
 
@@ -156,11 +161,11 @@
           </div>
         </div>
         <div class="profile-layout">
-          <div class="card profile-card">
+          <div class="panel profile-card">
             <h3>Основная информация</h3>
             <div class="profile-info" id="profileInfo"></div>
           </div>
-          <form class="card profile-card" id="profileForm">
+          <form class="panel profile-card" id="profileForm">
             <h3>Редактировать</h3>
             <label class="field">
               <span>Имя</span>
@@ -187,7 +192,7 @@
           </div>
         </div>
         <div class="admin-layout">
-          <form class="card" id="channelCreateForm">
+          <form class="panel form-card" id="channelCreateForm">
             <h3>Добавить канал</h3>
             <label class="field">
               <span>Название</span>
@@ -203,7 +208,7 @@
             </label>
             <button class="btn accent" type="submit">Добавить</button>
           </form>
-          <div class="card admin-list">
+          <div class="panel admin-list">
             <h3>Список каналов</h3>
             <div id="adminChannelList" class="stack"></div>
           </div>
@@ -218,7 +223,7 @@
           </div>
         </div>
         <div class="auth-layout">
-          <form class="card" id="loginForm">
+          <form class="panel form-card" id="loginForm">
             <h3>Войти</h3>
             <label class="field">
               <span>Логин</span>
@@ -230,7 +235,7 @@
             </label>
             <button class="btn accent" type="submit">Войти</button>
           </form>
-          <form class="card" id="registerForm">
+          <form class="panel form-card" id="registerForm">
             <h3>Регистрация</h3>
             <label class="field">
               <span>Логин</span>

@@ -22,6 +22,7 @@ services:
     command: "poetry run python ./src/gunicorn/run.py"
     volumes:
       - ./logs:/app/logs
+      - ./src/static:/app/src/static
 
   celery_worker:
     image: feed_fusion:1.0.0

@@ -18,7 +18,7 @@
 
 body {
   margin: 0;
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-family: "Golos Text", "Segoe UI", sans-serif;
   background: var(--bg);
   color: var(--ink);
   min-height: 100vh;
@@ -105,7 +105,7 @@ button {
 
 .logo {
   display: grid;
-  font-family: "Fraunces", serif;
+  font-family: "Cormorant Garamond", serif;
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1;
@@ -150,7 +150,7 @@ button {
 }
 
 .hero-text h1 {
-  font-family: "Fraunces", serif;
+  font-family: "Cormorant Garamond", serif;
   font-size: clamp(2.2rem, 3vw, 3.1rem);
   margin: 0.5rem 0 1rem;
 }
@@ -214,7 +214,7 @@ button {
 
 .section-head h2 {
   margin: 0;
-  font-family: "Fraunces", serif;
+  font-family: "Cormorant Garamond", serif;
   font-size: 2rem;
 }
 
@@ -239,13 +239,24 @@ button {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid var(--outline);
   border-radius: 18px;
   padding: 1.2rem;
   margin-bottom: 2rem;
+}
+
+.filters-top {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr);
+}
+
+.filters-bottom {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) minmax(200px, 240px);
+  gap: 1rem;
+  align-items: end;
 }
 
 .field {
@@ -280,44 +291,44 @@ button {
   display: flex;
   gap: 0.8rem;
   align-items: flex-end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.filter-actions .btn {
+  flex: 1 1 120px;
 }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.6rem;
+  align-items: stretch;
 }
 
-.card {
+.panel {
   background: var(--card);
+  border: 1px solid var(--outline);
   border-radius: 18px;
   padding: 1.4rem;
-  border: 1px solid var(--outline);
   box-shadow: var(--shadow);
   display: grid;
   gap: 1rem;
 }
 
-.card img {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  border-radius: 14px;
-  border: 1px solid var(--outline);
-}
-
-.card h3 {
+.panel h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  font-family: "Cormorant Garamond", serif;
 }
 
-.card p {
+.panel p {
   margin: 0;
   color: var(--muted);
   line-height: 1.5;
 }
 
-.card .meta {
+.panel .meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
@@ -325,10 +336,77 @@ button {
   color: var(--muted);
 }
 
-.card .actions {
+.panel .actions {
   display: flex;
   gap: 0.6rem;
   flex-wrap: wrap;
+}
+
+.news-card {
+  background: var(--card);
+  border: 1px solid #d8c8ff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.news-image {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: var(--bg-soft);
+}
+
+.news-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.news-body {
+  padding: 1.1rem 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1;
+}
+
+.news-meta {
+  font-size: 0.78rem;
+  color: #7f6f9f;
+  line-height: 1.4;
+}
+
+.news-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  font-family: "Cormorant Garamond", serif;
+}
+
+.news-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.news-actions {
+  margin-top: 0.8rem;
+}
+
+.news-card .btn {
+  width: 100%;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .section-actions {
@@ -339,7 +417,7 @@ button {
 
 .btn {
   padding: 0.6rem 1.2rem;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid transparent;
   cursor: pointer;
   font-weight: 600;
@@ -365,6 +443,16 @@ button {
 .btn.ghost:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.news-card .btn.ghost {
+  border-color: #d8c8ff;
+  color: var(--accent);
+}
+
+.news-card .btn.ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
 }
 
 .profile-layout,
@@ -438,8 +526,13 @@ button {
     padding-top: 2rem;
   }
 
-  .filters {
+  .filters-bottom {
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .filter-actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
   }
 }
 
