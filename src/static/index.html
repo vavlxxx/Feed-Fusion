@@ -1,0 +1,257 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Feed Fusion — агрегатор новостей</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient">
+      <span class="orb orb-1"></span>
+      <span class="orb orb-2"></span>
+      <span class="orb orb-3"></span>
+      <span class="grid"></span>
+    </div>
+
+    <header class="site-header">
+      <a class="logo" href="#/news">
+        <span>Feed</span>
+        <span>Fusion</span>
+      </a>
+      <nav class="nav">
+        <a class="nav-link" href="#/news">Новости</a>
+        <a class="nav-link" href="#/channels">Каналы</a>
+        <a class="nav-link auth-only" href="#/subscriptions">Подписки</a>
+        <a class="nav-link auth-only" href="#/profile">Профиль</a>
+        <a class="nav-link admin-only" href="#/admin">Админ</a>
+      </nav>
+      <div class="header-actions">
+        <button class="btn ghost" id="loginBtn">Войти</button>
+        <button class="btn accent" id="registerBtn">Регистрация</button>
+        <button class="btn ghost" id="logoutBtn" hidden>Выйти</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">Агрегатор новостей</p>
+          <h1>Собирайте актуальную ленту из любимых источников.</h1>
+          <p class="subhead">
+            Feed Fusion объединяет RSS-каналы, помогает находить важное и
+            доставляет новости в Telegram для авторизованных пользователей.
+          </p>
+          <div class="hero-actions">
+            <button class="btn accent" id="heroRefresh">Обновить ленту</button>
+            <button class="btn ghost" id="heroExplore">Исследовать каналы</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div>
+            <h3>Сейчас в фокусе</h3>
+            <p class="muted">Умная фильтрация, поиск, сортировка и подписки.</p>
+          </div>
+          <div class="hero-metrics">
+            <div>
+              <span class="metric" id="newsTotal">0</span>
+              <span class="label">новостей</span>
+            </div>
+            <div>
+              <span class="metric" id="channelTotal">0</span>
+              <span class="label">каналов</span>
+            </div>
+            <div>
+              <span class="metric" id="userState">Гость</span>
+              <span class="label">статус</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="news" class="view" data-view>
+        <div class="section-head">
+          <div>
+            <h2>Новости</h2>
+            <p class="muted" id="newsMeta">Гибкая фильтрация по запросу и каналам.</p>
+          </div>
+          <div class="chips">
+            <span class="chip" id="activeFilter">Все каналы</span>
+            <span class="chip" id="activeSort">Сначала новые</span>
+          </div>
+        </div>
+
+        <div class="filters">
+          <label class="field">
+            <span>Поиск</span>
+            <input type="search" id="searchInput" placeholder="Ключевые слова" />
+          </label>
+          <label class="field">
+            <span>Канал</span>
+            <select id="channelSelect"></select>
+          </label>
+          <label class="field">
+            <span>Сортировка</span>
+            <select id="sortSelect">
+              <option value="true" selected>Сначала новые</option>
+              <option value="false">Сначала старые</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Размер страницы</span>
+            <select id="limitSelect">
+              <option value="6">6</option>
+              <option value="9" selected>9</option>
+              <option value="12">12</option>
+              <option value="15">15</option>
+            </select>
+          </label>
+          <div class="filter-actions">
+            <button class="btn ghost" id="resetFilters">Сбросить</button>
+            <button class="btn accent" id="applyFilters">Применить</button>
+          </div>
+        </div>
+
+        <div id="newsGrid" class="card-grid"></div>
+
+        <div class="section-actions">
+          <button class="btn ghost" id="loadMoreBtn">Загрузить ещё</button>
+        </div>
+      </section>
+
+      <section id="channels" class="view" data-view hidden>
+        <div class="section-head">
+          <div>
+            <h2>Каналы</h2>
+            <p class="muted">Подпишитесь, чтобы получать новости в Telegram.</p>
+          </div>
+          <div class="chips">
+            <span class="chip" id="channelMeta">0 каналов</span>
+          </div>
+        </div>
+        <div id="channelGrid" class="card-grid"></div>
+      </section>
+
+      <section id="subscriptions" class="view" data-view hidden>
+        <div class="section-head">
+          <div>
+            <h2>Мои подписки</h2>
+            <p class="muted">Управляйте подключенными источниками.</p>
+          </div>
+        </div>
+        <div id="subsGrid" class="card-grid"></div>
+      </section>
+
+      <section id="profile" class="view" data-view hidden>
+        <div class="section-head">
+          <div>
+            <h2>Профиль</h2>
+            <p class="muted">Укажите Telegram ID для получения новостей.</p>
+          </div>
+        </div>
+        <div class="profile-layout">
+          <div class="card profile-card">
+            <h3>Основная информация</h3>
+            <div class="profile-info" id="profileInfo"></div>
+          </div>
+          <form class="card profile-card" id="profileForm">
+            <h3>Редактировать</h3>
+            <label class="field">
+              <span>Имя</span>
+              <input type="text" name="first_name" />
+            </label>
+            <label class="field">
+              <span>Фамилия</span>
+              <input type="text" name="last_name" />
+            </label>
+            <label class="field">
+              <span>Telegram ID</span>
+              <input type="text" name="telegram_id" placeholder="Например: 123456789" />
+            </label>
+            <button class="btn accent" type="submit">Сохранить</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="admin" class="view" data-view hidden>
+        <div class="section-head">
+          <div>
+            <h2>Администрирование</h2>
+            <p class="muted">Управление RSS-каналами доступно только администраторам.</p>
+          </div>
+        </div>
+        <div class="admin-layout">
+          <form class="card" id="channelCreateForm">
+            <h3>Добавить канал</h3>
+            <label class="field">
+              <span>Название</span>
+              <input type="text" name="title" required />
+            </label>
+            <label class="field">
+              <span>RSS-ссылка</span>
+              <input type="url" name="link" required placeholder="https://example.com/rss" />
+            </label>
+            <label class="field">
+              <span>Описание</span>
+              <textarea name="description" rows="3"></textarea>
+            </label>
+            <button class="btn accent" type="submit">Добавить</button>
+          </form>
+          <div class="card admin-list">
+            <h3>Список каналов</h3>
+            <div id="adminChannelList" class="stack"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="auth" class="view" data-view hidden>
+        <div class="section-head">
+          <div>
+            <h2>Авторизация</h2>
+            <p class="muted">Создайте аккаунт или войдите в существующий.</p>
+          </div>
+        </div>
+        <div class="auth-layout">
+          <form class="card" id="loginForm">
+            <h3>Войти</h3>
+            <label class="field">
+              <span>Логин</span>
+              <input type="text" name="username" required />
+            </label>
+            <label class="field">
+              <span>Пароль</span>
+              <input type="password" name="password" required />
+            </label>
+            <button class="btn accent" type="submit">Войти</button>
+          </form>
+          <form class="card" id="registerForm">
+            <h3>Регистрация</h3>
+            <label class="field">
+              <span>Логин</span>
+              <input type="text" name="username" required />
+            </label>
+            <label class="field">
+              <span>Пароль</span>
+              <input type="password" name="password" required />
+            </label>
+            <button class="btn ghost" type="submit">Создать аккаунт</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Feed Fusion — минималистичная витрина новостей и подписок.</p>
+    </footer>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
