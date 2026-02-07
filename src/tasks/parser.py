@@ -5,6 +5,7 @@ from typing import cast
 
 import feedparser
 from celery import Task
+from dateutil import parser as date_parser
 
 from src.config import settings
 from src.db import sessionmaker_null_pool
@@ -27,12 +28,16 @@ def get_image_from_links(links: list[dict[str, str]]):
             return link.get("href", None)
 
 
-def parse_date(date: str) -> datetime:
-    return (
-        datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %z")
-        .astimezone(timezone.utc)
-        .replace(tzinfo=None)
-    )
+def parse_date(date: str) -> datetime | None:
+    try:
+        dt = date_parser.parse(date)
+        # Конвертируем в UTC и удаляем tzinfo
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+    except (ValueError, TypeError) as e:
+        logger.warning("Failed to parse date '%s': %s", date, e)
+        return None
 
 
 def parse_text(item: feedparser.FeedParserDict, key: str):
@@ -56,9 +61,15 @@ async def parse_rss_feeds():
         result = []
         entries = feed.entries
         for idx, entry in enumerate(entries, 1):
-            published: datetime = parse_date(entry.get("published"))  # type: ignore
             link: str = parse_text(entry, "link")
             title: str = parse_text(entry, "title")
+
+            published: datetime | None = parse_date(entry.get("published"))  # type: ignore
+            if not published:
+                logger.error(
+                    "#%s News (%s) has no published date, skipping...", idx, link
+                )
+                continue
             if published < datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
                 hours=settings.PREFERED_HOURS_PERIOD
             ):
