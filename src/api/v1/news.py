@@ -28,7 +28,9 @@ async def get_all_news(
     db: DBDep,
     pagination: PaginationDep,
     search_after: str | None = Query(None, description="Курсор для пагинации"),
-    channel_id: int | None = Query(None, description="ID канала-источника"),
+    channel_ids: list[int] | None = Query(
+        None, description="Channel IDs"
+    ),
     query: str | None = Query(None, description="Поисковый запрос"),
     recent_first: bool = Query(True, description="Сначала новые"),
 ) -> NewsResponse:
@@ -40,7 +42,7 @@ async def get_all_news(
             query_string=query,
             # offset=pagination.offset,
             limit=pagination.limit,
-            channel_id=channel_id,
+            channel_ids=channel_ids,
             search_after=search_after,
             recent_first=recent_first,
         )

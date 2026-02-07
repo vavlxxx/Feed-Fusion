@@ -12,9 +12,10 @@ const state = {
   subsByChannel: new Map(),
   newsCursor: null,
   hasNext: false,
+  isLoading: false,
   filters: {
     query: "",
-    channelId: "",
+    channelIds: [],
     recentFirst: true,
     limit: 9,
   },
@@ -36,12 +37,13 @@ const dom = {
   activeSort: document.getElementById("activeSort"),
   searchInput: document.getElementById("searchInput"),
   channelSelect: document.getElementById("channelSelect"),
+  channelToggle: document.getElementById("channelToggle"),
+  channelDropdown: document.getElementById("channelDropdown"),
   sortSelect: document.getElementById("sortSelect"),
-  limitSelect: document.getElementById("limitSelect"),
   resetFilters: document.getElementById("resetFilters"),
   applyFilters: document.getElementById("applyFilters"),
   newsGrid: document.getElementById("newsGrid"),
-  loadMoreBtn: document.getElementById("loadMoreBtn"),
+  newsSentinel: document.getElementById("newsSentinel"),
   channelGrid: document.getElementById("channelGrid"),
   channelMeta: document.getElementById("channelMeta"),
   subsGrid: document.getElementById("subsGrid"),
@@ -236,30 +238,88 @@ async function loadChannels() {
 }
 
 function renderChannelSelect() {
-  dom.channelSelect.innerHTML = "";
-  const allOption = document.createElement("option");
-  allOption.value = "";
-  allOption.textContent = "Все каналы";
-  dom.channelSelect.appendChild(allOption);
+  if (!dom.channelDropdown) return;
+  dom.channelDropdown.innerHTML = "";
   state.channels.forEach((channel) => {
-    const option = document.createElement("option");
-    option.value = String(channel.id);
-    option.textContent = channel.title;
-    dom.channelSelect.appendChild(option);
+    const label = document.createElement("label");
+    label.className = "channel-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = String(channel.id);
+    checkbox.checked = state.filters.channelIds.includes(checkbox.value);
+    checkbox.addEventListener("change", () => {
+      updateChannelToggle();
+    });
+
+    const text = document.createElement("span");
+    text.textContent = channel.title;
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    dom.channelDropdown.appendChild(label);
   });
-  dom.channelSelect.value = state.filters.channelId;
+  updateChannelToggle();
+}
+
+function getSelectedChannelIds() {
+  if (!dom.channelDropdown) return [];
+  return Array.from(dom.channelDropdown.querySelectorAll("input[type='checkbox']:checked")).map(
+    (input) => input.value
+  );
+}
+
+function updateChannelToggle() {
+  if (!dom.channelToggle) return;
+  const selectedIds = getSelectedChannelIds();
+  if (selectedIds.length === 0) {
+    dom.channelToggle.textContent = "Все каналы";
+    return;
+  }
+  if (selectedIds.length === 1) {
+    dom.channelToggle.textContent =
+      state.channelMap.get(Number(selectedIds[0]))?.title || "Канал";
+    return;
+  }
+  dom.channelToggle.textContent = `Выбрано: ${selectedIds.length}`;
+}
+
+function getSelectedChannelNames() {
+  const ids = getSelectedChannelIds();
+  return ids
+    .map((id) => state.channelMap.get(Number(id))?.title)
+    .filter(Boolean);
+}
+
+function closeChannelDropdown() {
+  if (dom.channelDropdown) {
+    dom.channelDropdown.hidden = true;
+  }
+}
+
+function isClickInsideChannelSelect(event) {
+  if (!dom.channelSelect) return false;
+  if (event.composedPath) {
+    return event.composedPath().includes(dom.channelSelect);
+  }
+  return dom.channelSelect.contains(event.target);
 }
 
 async function loadNews({ reset = false } = {}) {
+  if (state.isLoading) return;
   if (reset) {
     state.newsCursor = null;
     dom.newsGrid.innerHTML = "";
   }
+  if (!reset && !state.hasNext) return;
+  state.isLoading = true;
   const params = new URLSearchParams();
   params.set("limit", String(state.filters.limit));
   params.set("recent_first", String(state.filters.recentFirst));
   if (state.filters.query) params.set("query", state.filters.query);
-  if (state.filters.channelId) params.set("channel_id", state.filters.channelId);
+  if (state.filters.channelIds.length > 0) {
+    state.filters.channelIds.forEach((id) => params.append("channel_ids", id));
+  }
   if (!reset && state.newsCursor) params.set("search_after", state.newsCursor);
 
   try {
@@ -272,9 +332,10 @@ async function loadNews({ reset = false } = {}) {
     dom.newsTotal.textContent = totalCount;
     dom.newsMeta.textContent = `Показано ${currentCount + items.length} из ${totalCount}`;
     renderNews(items, !reset);
-    dom.loadMoreBtn.hidden = !state.hasNext;
   } catch (error) {
     showToast(error.message);
+  } finally {
+    state.isLoading = false;
   }
 }
 
@@ -646,28 +707,75 @@ function bindEvents() {
 
   dom.applyFilters.addEventListener("click", () => {
     state.filters.query = dom.searchInput.value.trim();
-    state.filters.channelId = dom.channelSelect.value;
+    state.filters.channelIds = getSelectedChannelIds();
     state.filters.recentFirst = dom.sortSelect.value === "true";
-    state.filters.limit = Number(dom.limitSelect.value);
-    dom.activeFilter.textContent = state.filters.channelId
-      ? state.channelMap.get(Number(state.filters.channelId))?.title || "Фильтр"
-      : "Все каналы";
+    state.filters.limit = 9;
+    closeChannelDropdown();
+    if (state.filters.channelIds.length === 0) {
+      dom.activeFilter.textContent = "Все каналы";
+    } else if (state.filters.channelIds.length === 1) {
+      dom.activeFilter.textContent =
+        state.channelMap.get(Number(state.filters.channelIds[0]))?.title || "Канал";
+    } else {
+      const names = getSelectedChannelNames();
+      dom.activeFilter.textContent = names.length > 0 ? names.join(", ") : "Выбранные каналы";
+    }
     dom.activeSort.textContent = state.filters.recentFirst ? "Сначала новые" : "Сначала старые";
     loadNews({ reset: true });
   });
 
   dom.resetFilters.addEventListener("click", () => {
-    state.filters = { query: "", channelId: "", recentFirst: true, limit: 9 };
+    state.filters = { query: "", channelIds: [], recentFirst: true, limit: 9 };
     dom.searchInput.value = "";
-    dom.channelSelect.value = "";
+    if (dom.channelDropdown) {
+      Array.from(dom.channelDropdown.querySelectorAll("input[type='checkbox']")).forEach(
+        (input) => {
+          input.checked = false;
+        }
+      );
+    }
+    updateChannelToggle();
     dom.sortSelect.value = "true";
-    dom.limitSelect.value = "9";
     dom.activeFilter.textContent = "Все каналы";
     dom.activeSort.textContent = "Сначала новые";
+    closeChannelDropdown();
     loadNews({ reset: true });
   });
 
-  dom.loadMoreBtn.addEventListener("click", () => loadNews({ reset: false }));
+  dom.searchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      dom.applyFilters.click();
+    }
+  });
+
+  if (dom.channelToggle && dom.channelDropdown && dom.channelSelect) {
+    dom.channelToggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dom.channelDropdown.hidden = !dom.channelDropdown.hidden;
+    });
+
+    dom.channelDropdown.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    document.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (!isClickInsideChannelSelect(event)) {
+          closeChannelDropdown();
+        }
+      },
+      true
+    );
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeChannelDropdown();
+      }
+    });
+  }
 
   dom.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -816,10 +924,23 @@ async function bootstrap() {
 
   dom.searchInput.value = state.filters.query;
   dom.sortSelect.value = String(state.filters.recentFirst);
-  dom.limitSelect.value = String(state.filters.limit);
 
   await loadNews({ reset: true });
   handleRoute();
+
+  if (dom.newsSentinel) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            loadNews({ reset: false });
+          }
+        });
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(dom.newsSentinel);
+  }
 }
 
 bootstrap();

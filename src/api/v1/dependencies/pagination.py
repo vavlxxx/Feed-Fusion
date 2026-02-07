@@ -23,7 +23,7 @@ def get_pagination_params(
             le=15,
             description="Максимальное количество новостей на одной странице",
         ),
-    ] = 15,
+    ] = 9,
 ) -> PaginationParamsDTO:
     return PaginationParamsDTO(
         # page=page,

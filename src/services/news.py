@@ -35,13 +35,14 @@ class NewsService(BaseService):
         limit: int,
         # offset: int,
         query_string: str | None = None,
-        channel_id: int | None = None,
+        channel_ids: list[int] | None = None,
         search_after: str | None = None,
         recent_first: bool = True,
     ) -> tuple[int, list[dict], str | None, int]:
         try:
-            if channel_id is not None:
-                await self.db.channels.get_one(id=channel_id)
+            if channel_ids:
+                for channel_id in channel_ids:
+                    await self.db.channels.get_one(id=channel_id)
         except ObjectNotFoundError as exc:
             raise ChannelNotFoundError from exc
 
@@ -51,7 +52,7 @@ class NewsService(BaseService):
         async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
             total, news, last_hit_sort = await es.search(
                 query_string=query_string,
-                channel_id=channel_id,
+                channel_ids=channel_ids,
                 limit=limit,
                 search_after=sort_param,
                 recent_first=recent_first,

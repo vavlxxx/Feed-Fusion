@@ -173,7 +173,7 @@ class ESManager:
         self,
         limit: int,
         query_string: str | None = None,
-        channel_id: int | None = None,
+        channel_ids: list[int] | None = None,
         search_after: list | None = None,
         recent_first: bool = True,
         # offset: int = 0,
@@ -216,8 +216,10 @@ class ESManager:
             }
 
         filter_clauses = []
-        if channel_id:
-            filter_clauses.append({"term": {"channel_id": f"{channel_id}"}})
+        if channel_ids:
+            filter_clauses.append(
+                {"terms": {"channel_id": [str(cid) for cid in channel_ids]}}
+            )
 
         query_map = {
             "query": {"bool": {"must": must_clauses, "filter": filter_clauses}},

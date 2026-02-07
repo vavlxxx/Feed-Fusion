@@ -81,10 +81,11 @@
             <h2>Новости</h2>
             <p class="muted" id="newsMeta">Гибкая фильтрация по запросу и каналам.</p>
           </div>
-          <div class="chips">
-            <span class="chip" id="activeFilter">Все каналы</span>
-            <span class="chip" id="activeSort">Сначала новые</span>
-          </div>
+        </div>
+
+        <div class="chips chips-below">
+          <span class="chip" id="activeFilter">Все каналы</span>
+          <span class="chip" id="activeSort">Сначала новые</span>
         </div>
 
         <div class="filters">
@@ -93,11 +94,19 @@
               <span>Поиск</span>
               <input type="search" id="searchInput" placeholder="Ключевые слова" />
             </label>
+            <button class="btn accent filters-apply" id="applyFilters">
+              Найти
+            </button>
           </div>
           <div class="filters-bottom">
             <label class="field">
               <span>Канал</span>
-              <select id="channelSelect"></select>
+              <div class="channel-select" id="channelSelect">
+                <button class="channel-toggle" id="channelToggle" type="button">
+                  Все каналы
+                </button>
+                <div class="channel-dropdown" id="channelDropdown" hidden></div>
+              </div>
             </label>
             <label class="field">
               <span>Сортировка</span>
@@ -106,28 +115,15 @@
                 <option value="false">Сначала старые</option>
               </select>
             </label>
-            <label class="field">
-              <span>Размер страницы</span>
-              <select id="limitSelect">
-                <option value="3">3</option>
-                <option value="6">6</option>
-                <option value="9" selected>9</option>
-                <option value="12">12</option>
-                <option value="15">15</option>
-              </select>
-            </label>
             <div class="filter-actions">
               <button class="btn ghost" id="resetFilters">Сбросить</button>
-              <button class="btn accent" id="applyFilters">Применить</button>
             </div>
           </div>
         </div>
 
         <div id="newsGrid" class="card-grid"></div>
 
-        <div class="section-actions">
-          <button class="btn ghost" id="loadMoreBtn">Загрузить ещё</button>
-        </div>
+        <div class="news-sentinel" id="newsSentinel" aria-hidden="true"></div>
       </section>
 
       <section id="channels" class="view" data-view hidden>
