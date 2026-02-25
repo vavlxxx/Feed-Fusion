@@ -18,6 +18,28 @@ class NewsCategory(str, Enum):
     MEDICINE = "Здоровье"
 
 
+class DenormalizedNewsAddDTO(BaseDTO):
+    title: str
+    summary: str | None = None
+    category: NewsCategory
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def parse_category(cls, value: str | NewsCategory) -> NewsCategory:
+        if isinstance(value, str):
+            try:
+                return NewsCategory(value)
+            except ValueError:
+                raise ValueError(f"Неизвестная категория: {value}")
+        return value
+
+
+class DenormalizedNewsDTO(DenormalizedNewsAddDTO):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class ParsedNewsDTO(BaseDTO):
     image: str | None
     title: str
@@ -41,6 +63,10 @@ class NewsDTO(AddNewsDTO):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class NewsUpdateDTO(BaseDTO):
+    category: NewsCategory | None = None
 
 
 class PagingInfo(BaseDTO):
