@@ -2,8 +2,20 @@ from datetime import datetime
 
 from bs4 import BeautifulSoup
 from pydantic import field_validator
+from enum import Enum
 
 from src.schemas.base import BaseDTO
+
+
+class NewsCategory(str, Enum):
+    INTERNATIONAL = "Международные отношения"
+    CULTURE = "Культура"
+    SCIENCETECH = "Наука и технологии"
+    SOCIETY = "Общество"
+    ECONOMICS = "Экономика"
+    INCIDENTS = "Происшествия"
+    SPORT = "Спорт"
+    MEDICINE = "Здоровье"
 
 
 class ParsedNewsDTO(BaseDTO):
