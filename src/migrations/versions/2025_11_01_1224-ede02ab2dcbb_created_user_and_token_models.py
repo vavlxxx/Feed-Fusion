@@ -21,6 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    op.execute("DROP TYPE IF EXISTS tokentype CASCADE")
+    tokentype_enum = postgresql.ENUM("ACCESS", "REFRESH", name="tokentype")
+    tokentype_enum.create(op.get_bind())
+
     op.create_table(
         "users",
         sa.Column("username", sa.String(), nullable=False),
@@ -49,7 +53,7 @@ def upgrade() -> None:
         sa.Column("owner_id", sa.Integer(), nullable=False),
         sa.Column(
             "type",
-            postgresql.ENUM("ACCESS", "REFRESH", name="tokentype"),
+            postgresql.ENUM(name="tokentype", create_type=False),
             nullable=False,
         ),
         sa.Column("hashed_data", sa.String(), nullable=False),
@@ -78,3 +82,4 @@ def downgrade() -> None:
     """Downgrade schema."""
     op.drop_table("tokens")
     op.drop_table("users")
+    op.execute("DROP TYPE IF EXISTS tokentype CASCADE")

@@ -2,6 +2,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from alembic_postgresql_enum.sql_commands.enum_type import create_type
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -18,7 +19,9 @@ def upgrade() -> None:
 
     op.add_column(
         "users",
-        sa.Column("role", userrole_enum, nullable=False),
+        sa.Column("role", postgresql.ENUM(
+            name="userrole", create_type=False,
+        ), nullable=False, ),
     )
     op.drop_column("users", "email")
 
@@ -30,6 +33,4 @@ def downgrade() -> None:
         sa.Column("email", sa.VARCHAR(), autoincrement=False, nullable=True),
     )
     op.drop_column("users", "role")
-
-    userrole_enum = postgresql.ENUM(name="userrole")
-    userrole_enum.drop(op.get_bind())
+    op.execute("DROP TYPE IF EXISTS userrole CASCADE")
