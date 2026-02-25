@@ -1,7 +1,12 @@
 import base64
 import json
+import csv
+import io
 
-from schemas.news import NewsCategory
+from fastapi import HTTPException
+from pydantic import ValidationError
+
+from src.schemas.news import NewsCategory, DenormalizedNewsAddDTO, NewsUpdateDTO
 from src.config import settings
 from src.services.base import BaseService
 from src.utils.es_manager import ESManager
@@ -31,11 +36,56 @@ class CursorEncoder:
 
 
 class NewsService(BaseService):
-    async def upload_denormalized_news(self):
-        ...
-
     async def add_denormalized_news(self, news_id: int, category: NewsCategory):
-        ...
+        news = await self.db.news.get_one(id=news_id)
+        if news.category == category:
+            raise HTTPException()
+        await  self.db.news.edit(id=news_id, data=NewsUpdateDTO(category=category))
+        denorm_news = await self.db.denorm_news.add(DenormalizedNewsAddDTO(
+            title=news.title,
+            summary=news.summary,
+            category=category,
+        ))
+        await self.db.commit()
+        return denorm_news
+
+    async def upload_denormalized_news(self, content: bytes):
+        try:
+            text_data = content.decode("utf-8-sig")
+            dict_reader = csv.DictReader(io.StringIO(text_data))
+        except UnicodeDecodeError as e:
+            raise HTTPException(status_code=400, detail="Кодировка должна быть UTF-8")
+
+        required_fields = DenormalizedNewsAddDTO.model_fields.keys()
+        actual_fields = set(dict_reader.fieldnames or [])
+        missing_fields = required_fields - actual_fields
+        if missing_fields:
+            raise HTTPException(
+                status_code=400,
+                detail=f"В CSV отсутствуют обязательные колонки: {', '.join(missing_fields)}"
+            )
+
+        validated_data = []
+        errors = []
+
+        for i, row in enumerate(dict_reader, start=1):
+            try:
+                clean_row = {k.strip(): v.strip() for k, v in row.items() if k}
+                dto = DenormalizedNewsAddDTO.model_validate(clean_row)
+                validated_data.append(dto)
+            except ValidationError as e:
+                errors.append(f"Строка {i}: {e.json()}")
+                continue
+        if validated_data:
+            await self.db.denorm_news.add_bulk(validated_data)
+            await self.db.commit()
+
+        return {
+            "status": "success",
+            "uploaded": len(validated_data),
+            "failed": len(errors),
+            "details": errors[:10]
+        }
 
     async def get_news_list(
             self,

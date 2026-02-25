@@ -5,11 +5,18 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError
 
+from src.models import DenormalizedNews
 from src.models.news import News
 from src.repos.base import BaseRepo
-from src.repos.mappers.mappers import NewsMapper
-from src.schemas.news import AddNewsDTO, NewsDTO
+from src.repos.mappers.mappers import NewsMapper, DenormNewsMapper
+from src.schemas.news import AddNewsDTO, NewsDTO, DenormalizedNewsDTO
 from src.utils.exceptions import ValueOutOfRangeError
+
+
+
+class DenormNewsRepo(BaseRepo[DenormalizedNews, DenormalizedNewsDTO]):
+    model = DenormalizedNews
+    mapper = DenormNewsMapper
 
 
 class NewsRepo(BaseRepo[News, NewsDTO]):

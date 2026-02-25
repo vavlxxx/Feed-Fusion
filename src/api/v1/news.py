@@ -1,12 +1,13 @@
 import math
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, UploadFile
 from fastapi_cache.decorator import cache
 
+from src.api.v1.dependencies.auth import AdminAllowedDep
 from src.api.v1.dependencies.db import DBDep
 from src.api.v1.dependencies.pagination import PaginationDep
 from src.api.v1.responses.news import NEWS_RESPONSES
-from src.schemas.news import NewsResponse, PagingInfo
+from src.schemas.news import NewsResponse, PagingInfo, NewsCategory
 from src.services.news import NewsService
 from src.utils.exceptions import (
     ChannelNotFoundError,
@@ -16,6 +17,30 @@ from src.utils.exceptions import (
 )
 
 router = APIRouter(prefix="/news", tags=["Новости"])
+
+
+@router.post(
+    "/",
+    summary="Загрузить размеченные данные для обучения",
+)
+async def upload_denormalized_news(
+    db: DBDep,
+    file: UploadFile,
+    _: AdminAllowedDep,
+):
+    content = await file.read()
+    response = await NewsService(db).upload_denormalized_news(content)
+    return response
+
+@router.post(
+    "/{news_id}",
+    summary="Скорректировать категорию для новости и добавить в обучающую выборку",
+)
+async def add_denormalized_news(
+    db: DBDep,
+    news_id: int,
+    category: NewsCategory,
+): ...
 
 
 @router.get(
