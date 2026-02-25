@@ -1,6 +1,7 @@
 import base64
 import json
 
+from schemas.news import NewsCategory
 from src.config import settings
 from src.services.base import BaseService
 from src.utils.es_manager import ESManager
@@ -30,14 +31,20 @@ class CursorEncoder:
 
 
 class NewsService(BaseService):
+    async def upload_denormalized_news(self):
+        ...
+
+    async def add_denormalized_news(self, news_id: int, category: NewsCategory):
+        ...
+
     async def get_news_list(
-        self,
-        limit: int,
-        # offset: int,
-        query_string: str | None = None,
-        channel_ids: list[int] | None = None,
-        search_after: str | None = None,
-        recent_first: bool = True,
+            self,
+            limit: int,
+            # offset: int,
+            query_string: str | None = None,
+            channel_ids: list[int] | None = None,
+            search_after: str | None = None,
+            recent_first: bool = True,
     ) -> tuple[int, list[dict], str | None, int]:
         try:
             if channel_ids:
