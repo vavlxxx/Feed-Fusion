@@ -22,18 +22,22 @@ def upload_training_dataset(
 async def upload_dataset(file_text: str, upload: dict) -> None:
     validated_data = []
     errors = []
+    logger.info("Started uploading dataset...")
 
     upload = DatasetUploadDTO.model_validate(upload)
     dict_reader = csv.DictReader(io.StringIO(file_text))
 
-    for i, row in enumerate(dict_reader, start=1):
+    for idx, row in enumerate(dict_reader, start=1):
         try:
             clean_row = {k.strip(): v.strip() for k, v in row.items() if k and v}
             dto = DenormalizedNewsAddDTO.model_validate(clean_row)
+            logger.debug("Successfully validated #%d row, %s", idx, dto)
             validated_data.append(dto)
         except Exception as exc:
+            logger.warning("Failed to validate #%d row: %s", idx, exc)
             errors.append(str(exc))
 
+    logger.info("Finished validating dataset. Errors: %d, Uploads: %d", len(errors), len(validated_data))
     async with DBManager(sessionmaker_null_pool) as db:
         if validated_data:
             await db.denorm_news.add_bulk(validated_data)
@@ -45,4 +49,5 @@ async def upload_dataset(file_text: str, upload: dict) -> None:
             details=errors,
         )
         await db.uploads.edit(id=upload.id, data=edit_upload)
+        logger.info("Successfully saved dataset into db...")
         await db.commit()
