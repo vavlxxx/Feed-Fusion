@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy import ForeignKey, String, Text, CheckConstraint, text
+from sqlalchemy.dialects.postgresql import ENUM, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
@@ -26,9 +26,12 @@ class News(Base, PrimaryKeyMixin, TimingMixin):
     channel_id: Mapped[int] = mapped_column(
         ForeignKey("channels.id", ondelete="CASCADE", onupdate="CASCADE")
     )
-    category: Mapped[NewsCategory | None ]= mapped_column(
-        ENUM(NewsCategory, name="newscategory_enum",),
-        default=None
+    category: Mapped[NewsCategory | None] = mapped_column(
+        ENUM(
+            NewsCategory,
+            name="newscategory_enum",
+        ),
+        default=None,
     )
 
 
@@ -38,4 +41,22 @@ class DenormalizedNews(Base, PrimaryKeyMixin, TimingMixin):
     summary: Mapped[str] = mapped_column(Text())
     category: Mapped[NewsCategory] = mapped_column(
         ENUM(NewsCategory, name="newscategory_enum")
+    )
+
+
+class DatasetUploads(Base, PrimaryKeyMixin, TimingMixin):
+    __tablename__ = "dataset_uploads"
+    uploads: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    errors: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    is_completed: Mapped[bool] = mapped_column(
+        default=False, server_default=text("false")
+    )
+
+    details: Mapped[list[str]] = mapped_column(
+        ARRAY(String), default=list, server_default=text("'{}'")
+    )
+
+    __table_args__ = (
+        CheckConstraint("uploads >= 0", name="chk_dataset_uploads_positive_uploads"),
+        CheckConstraint("errors >= 0", name="chk_dataset_uploads_positive_errors"),
     )

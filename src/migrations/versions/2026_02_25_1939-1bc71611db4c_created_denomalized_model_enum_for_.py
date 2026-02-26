@@ -23,9 +23,15 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.execute("DROP TYPE IF EXISTS newscategory_enum CASCADE")
     newscategory_enum = postgresql.ENUM(
-        "INTERNATIONAL", "CULTURE", "SCIENCETECH", "SOCIETY",
-        "ECONOMICS", "INCIDENTS", "SPORT", "MEDICINE",
-        name="newscategory_enum"
+        "INTERNATIONAL",
+        "CULTURE",
+        "SCIENCETECH",
+        "SOCIETY",
+        "ECONOMICS",
+        "INCIDENTS",
+        "SPORT",
+        "MEDICINE",
+        name="newscategory_enum",
     )
     newscategory_enum.create(op.get_bind())
     op.create_table(

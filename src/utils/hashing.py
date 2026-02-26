@@ -3,7 +3,6 @@ import hashlib
 
 
 class HashManager:
-
     def _hash_password(self, password: str) -> str:
         salt = bcrypt.gensalt()
         pwd_bytes: bytes = password.encode(encoding="utf-8")

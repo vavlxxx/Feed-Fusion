@@ -93,6 +93,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 async def serve_frontend():
     return FileResponse(INDEX_FILE)
 
+
 app.include_router(main_router)
 app.include_router(docs_router)
 

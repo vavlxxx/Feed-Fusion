@@ -19,9 +19,14 @@ def upgrade() -> None:
 
     op.add_column(
         "users",
-        sa.Column("role", postgresql.ENUM(
-            name="userrole", create_type=False,
-        ), nullable=False, ),
+        sa.Column(
+            "role",
+            postgresql.ENUM(
+                name="userrole",
+                create_type=False,
+            ),
+            nullable=False,
+        ),
     )
     op.drop_column("users", "email")
 

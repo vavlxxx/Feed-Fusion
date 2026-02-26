@@ -23,6 +23,7 @@ celery_app = Celery(
         "src.tasks.parser",
         "src.tasks.processor",
         "src.tasks.subs",
+        "src.tasks.ml",
     ],
 )
 

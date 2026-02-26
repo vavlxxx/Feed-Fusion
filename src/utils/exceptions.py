@@ -19,20 +19,36 @@ class MissingTablesError(ApplicationError):
         super().__init__(self.detail)
 
 
+class AlreadyAssignedCategoryError(ApplicationError):
+    detail = "Provided already assigned category"
+
+
 class ObjectNotFoundError(ApplicationError):
     detail = "Object not found"
 
 
+class UploadNotFoundError(ObjectNotFoundError):
+    detail = "Upload not found"
+
+
+class NewsNotFoundError(ObjectNotFoundError):
+    detail = "News not found"
+
+
 class ChannelNotFoundError(ObjectNotFoundError):
-    pass
+    detail = "Channel not found"
 
 
 class ObjectExistsError(ApplicationError):
     detail = "Object already exists"
 
 
+class DenormalizedNewsAlreadyExistsError(ObjectExistsError):
+    detail = "Denormalized news already exists"
+
+
 class ChannelExistsError(ObjectExistsError):
-    pass
+    detail = "Channel already exists"
 
 
 class SubExistsError(ObjectExistsError):
@@ -67,6 +83,19 @@ class SubNotFoundError(ObjectNotFoundError):
     detail = "Subscription not found"
 
 
+class CSVDecodeError(ApplicationError):
+    detail = "Cannot decode provided CSV file"
+
+
+class MissingCSVHeadersError(ApplicationError):
+    detail = "Missing CSV headers"
+
+    def __init__(self, detail: set | None = None):
+        if detail and isinstance(detail, set):
+            self.detail = f"{self.detail}: %s" % ",".join(map(repr, detail))
+        super().__init__(self.detail)
+
+
 class ApplicationHTTPError(HTTPException):
     detail = "Something went wrong"
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -90,6 +119,16 @@ class AdminAllowedHTTPError(ApplicationHTTPError):
     status_code = status.HTTP_403_FORBIDDEN
 
 
+class AlreadyAssignedCategoryHTTPError(ApplicationHTTPError):
+    detail = "Provided already assigned category"
+    status_code = status.HTTP_400_BAD_REQUEST
+
+
+class DenormalizedNewsAlreadyExistsHTTPError(ApplicationHTTPError):
+    detail = "Denormalized news already exists"
+    status_code = status.HTTP_409_CONFLICT
+
+
 class SubNotFoundHTTPError(ApplicationHTTPError):
     detail = "Subscription not found"
     status_code = status.HTTP_404_NOT_FOUND
@@ -103,6 +142,11 @@ class EmptyChannelHTTPError(ApplicationHTTPError):
 class MisingTelegramErrorHTTPError(ApplicationHTTPError):
     detail = "Missing telegram id"
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class NewsNotFoundHTTPError(ApplicationHTTPError):
+    detail = "News not found"
+    status_code = status.HTTP_404_NOT_FOUND
 
 
 class ChannelNotFoundHTTPError(ApplicationHTTPError):
@@ -154,6 +198,11 @@ class UserNotFoundHTTPError(ApplicationHTTPError):
     status_code = status.HTTP_404_NOT_FOUND
 
 
+class UploadNotFoundHTTPError(ApplicationHTTPError):
+    detail = "Upload not found"
+    status_code = status.HTTP_404_NOT_FOUND
+
+
 class UserExistsHTTPError(ApplicationHTTPError):
     detail = "User already exists"
     status_code = status.HTTP_409_CONFLICT
@@ -162,3 +211,13 @@ class UserExistsHTTPError(ApplicationHTTPError):
 class InvalidLoginDataHTTPError(ApplicationHTTPError):
     detail = "Invalid login data, wrong password or username"
     status_code = status.HTTP_401_UNAUTHORIZED
+
+
+class CSVDecodeHTTPError(ApplicationHTTPError):
+    detail = "Cannot decode provided CSV file"
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class MissingCSVHeadersHTTPError(ApplicationHTTPError):
+    detail = "Missing CSV headers"
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY

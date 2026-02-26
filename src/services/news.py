@@ -3,14 +3,27 @@ import json
 import csv
 import io
 
-from fastapi import HTTPException
-from pydantic import ValidationError
-
-from src.schemas.news import NewsCategory, DenormalizedNewsAddDTO, NewsUpdateDTO
+from src.schemas.news import (
+    NewsCategory,
+    DenormalizedNewsAddDTO,
+    NewsUpdateDTO,
+    DenormalizedNewsDTO,
+    DatasetUploadAddDTO,
+)
+from src.tasks.ml import upload_training_dataset
 from src.config import settings
 from src.services.base import BaseService
 from src.utils.es_manager import ESManager
-from src.utils.exceptions import ChannelNotFoundError, ObjectNotFoundError
+from src.utils.exceptions import (
+    NewsNotFoundError,
+    ChannelNotFoundError,
+    ObjectNotFoundError,
+    AlreadyAssignedCategoryError,
+    ObjectExistsError,
+    DenormalizedNewsAlreadyExistsError,
+    CSVDecodeError,
+    MissingCSVHeadersError, UploadNotFoundError,
+)
 
 
 class CursorEncoder:
@@ -30,71 +43,83 @@ class CursorEncoder:
             json_str = base64.b64decode(cursor).decode()
             decoded_cursor = json.loads(json_str)
         except Exception:
-            return {}
+            decoded_cursor = {}
 
         return decoded_cursor
 
 
 class NewsService(BaseService):
-    async def add_denormalized_news(self, news_id: int, category: NewsCategory):
-        news = await self.db.news.get_one(id=news_id)
-        if news.category == category:
-            raise HTTPException()
-        await  self.db.news.edit(id=news_id, data=NewsUpdateDTO(category=category))
-        denorm_news = await self.db.denorm_news.add(DenormalizedNewsAddDTO(
-            title=news.title,
-            summary=news.summary,
-            category=category,
-        ))
+    async def get_uploads(self):
+        return await self.db.uploads.get_all()
+
+    async def get_upload(self, upload_id):
+        try:
+            return await self.db.uploads.get_one(id=upload_id)
+        except ObjectNotFoundError as exc:
+            raise UploadNotFoundError from exc
+
+    async def add_denormalized_news(
+        self,
+        news_id: int,
+        category: NewsCategory,
+    ) -> DenormalizedNewsDTO:
+        try:
+            news = await self.db.news.get_one(id=news_id)
+        except ObjectNotFoundError as exc:
+            raise NewsNotFoundError from exc
+
+        if news.category and news.category == category:
+            raise AlreadyAssignedCategoryError
+
+        to_update = NewsUpdateDTO(category=category)
+        await self.db.news.edit(
+            id=news_id,
+            ensure_existence=False,
+            data=to_update,
+        )
+
+        try:
+            added_news = await self.db.denorm_news.add(
+                DenormalizedNewsAddDTO(
+                    title=news.title,
+                    summary=news.summary,
+                    category=category,
+                )
+            )
+        except ObjectExistsError as exc:
+            raise DenormalizedNewsAlreadyExistsError from exc
+
         await self.db.commit()
-        return denorm_news
+        return added_news
 
     async def upload_denormalized_news(self, content: bytes):
         try:
-            text_data = content.decode("utf-8-sig")
+            text_data = content.decode("utf-8")
             dict_reader = csv.DictReader(io.StringIO(text_data))
-        except UnicodeDecodeError as e:
-            raise HTTPException(status_code=400, detail="Кодировка должна быть UTF-8")
+        except (UnicodeDecodeError, csv.Error) as exc:
+            raise CSVDecodeError from exc
 
         required_fields = DenormalizedNewsAddDTO.model_fields.keys()
-        actual_fields = set(dict_reader.fieldnames or [])
+        actual_fields = set(dict_reader.fieldnames or ())
         missing_fields = required_fields - actual_fields
+
         if missing_fields:
-            raise HTTPException(
-                status_code=400,
-                detail=f"В CSV отсутствуют обязательные колонки: {', '.join(missing_fields)}"
-            )
+            raise MissingCSVHeadersError(detail=missing_fields)
 
-        validated_data = []
-        errors = []
-
-        for i, row in enumerate(dict_reader, start=1):
-            try:
-                clean_row = {k.strip(): v.strip() for k, v in row.items() if k}
-                dto = DenormalizedNewsAddDTO.model_validate(clean_row)
-                validated_data.append(dto)
-            except ValidationError as e:
-                errors.append(f"Строка {i}: {e.json()}")
-                continue
-        if validated_data:
-            await self.db.denorm_news.add_bulk(validated_data)
-            await self.db.commit()
-
-        return {
-            "status": "success",
-            "uploaded": len(validated_data),
-            "failed": len(errors),
-            "details": errors[:10]
-        }
+        dataset_upload = DatasetUploadAddDTO()
+        upload_resp = await self.db.uploads.add(dataset_upload)
+        await  self.db.commit()
+        upload_training_dataset.delay(text_data, upload_resp.model_dump())
+        return upload_resp
 
     async def get_news_list(
-            self,
-            limit: int,
-            # offset: int,
-            query_string: str | None = None,
-            channel_ids: list[int] | None = None,
-            search_after: str | None = None,
-            recent_first: bool = True,
+        self,
+        limit: int,
+        # offset: int,
+        query_string: str | None = None,
+        channel_ids: list[int] | None = None,
+        search_after: str | None = None,
+        recent_first: bool = True,
     ) -> tuple[int, list[dict], str | None, int]:
         try:
             if channel_ids:
