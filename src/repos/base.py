@@ -62,14 +62,20 @@ class BaseRepo(Generic[ModelType, SchemaType]):
 
         return self.mapper.map_to_domain_entity(obj)
 
-    async def add_bulk(self, data: Sequence[BaseDTO]) -> Sequence[int]:
+    async def add_bulk(self, data: Sequence[BaseDTO]) -> list[SchemaType]:
         add_obj_stmt = (
             insert(self.model)
             .values([item.model_dump() for item in data])
-            .returning(self.model.id)  # type: ignore
+            .returning(self.model)
         )
-        result = await self.session.execute(add_obj_stmt)
-        return result.scalars().all()
+        try:
+            result = await self.session.execute(add_obj_stmt)
+        except IntegrityError as exc:
+            if exc.orig and isinstance(exc.orig.__cause__, UniqueViolationError):
+                raise ObjectExistsError from exc
+            raise exc
+        objs = result.scalars().all()
+        return [self.mapper.map_to_domain_entity(item) for item in objs]
 
     async def add(self, data: BaseDTO, **params) -> SchemaType:
         add_obj_stmt = (

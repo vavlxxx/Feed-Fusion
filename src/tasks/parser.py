@@ -71,7 +71,7 @@ async def parse_rss_feeds():
                 )
                 continue
             if published < datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
-                hours=settings.PREFERED_HOURS_PERIOD
+                hours=settings.PREFERRED_HOURS_PERIOD
             ):
                 logger.debug("#%s News (%s) too old, skipping...", idx, link)
                 continue

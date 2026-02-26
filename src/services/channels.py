@@ -9,7 +9,6 @@ from src.utils.exceptions import (
 
 
 class ChannelService(BaseService):
-
     async def get_channels_list(self):
         channels = await self.db.channels.get_all()
         return channels
@@ -34,7 +33,6 @@ class ChannelService(BaseService):
         data: ChannelUpdateDTO,
         channel_id: int,
     ) -> ChannelDTO:
-
         try:
             await self.db.channels.edit(
                 data=data,

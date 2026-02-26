@@ -1,22 +1,43 @@
 from typing import Sequence
 
 from asyncpg import DataError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError
 
-from src.models import DenormalizedNews
-from src.models.news import News
+from src.models.news import News, DatasetUploads, DenormalizedNews
 from src.repos.base import BaseRepo
-from src.repos.mappers.mappers import NewsMapper, DenormNewsMapper
-from src.schemas.news import AddNewsDTO, NewsDTO, DenormalizedNewsDTO
+from src.repos.mappers.mappers import NewsMapper, DenormNewsMapper, DatasetUploadMapper
+from src.schemas.news import AddNewsDTO, NewsDTO, DenormalizedNewsDTO, DatasetUploadDTO
 from src.utils.exceptions import ValueOutOfRangeError
-
 
 
 class DenormNewsRepo(BaseRepo[DenormalizedNews, DenormalizedNewsDTO]):
     model = DenormalizedNews
     mapper = DenormNewsMapper
+
+    async def convert_to_denormalized(self, news_ids: list[int]):
+        query = (
+            select(News.title, News.summary, News.category)
+            .select_from(News)
+            .filter(
+                News.id.in_(news_ids),
+                News.category.is_not(None),
+            )
+        )
+        insert_stmt = (
+            insert(self.model)
+            .from_select(["title", "summary", "category"], query)
+            .returning(self.model)
+        )
+        result = await self.session.execute(insert_stmt)
+        objs = result.scalars().all()
+        return [self.mapper.map_to_domain_entity(obj) for obj in objs]
+
+
+class DatasetUploadRepo(BaseRepo[DatasetUploads, DatasetUploadDTO]):
+    model = DatasetUploads
+    mapper = DatasetUploadMapper
 
 
 class NewsRepo(BaseRepo[News, NewsDTO]):

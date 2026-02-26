@@ -1,26 +1,73 @@
 import math
 
 from fastapi import APIRouter, Query, UploadFile
+from fastapi.responses import ORJSONResponse
 from fastapi_cache.decorator import cache
+from starlette import status
 
 from src.api.v1.dependencies.auth import AdminAllowedDep
 from src.api.v1.dependencies.db import DBDep
 from src.api.v1.dependencies.pagination import PaginationDep
 from src.api.v1.responses.news import NEWS_RESPONSES
-from src.schemas.news import NewsResponse, PagingInfo, NewsCategory
+from src.schemas.news import NewsResponse, PagingInfo, NewsCategory, DatasetUploadDTO
 from src.services.news import NewsService
 from src.utils.exceptions import (
     ChannelNotFoundError,
     ChannelNotFoundHTTPError,
     ValueOutOfRangeError,
     ValueOutOfRangeHTTPError,
+    DenormalizedNewsAlreadyExistsError,
+    DenormalizedNewsAlreadyExistsHTTPError,
+    AlreadyAssignedCategoryError,
+    NewsNotFoundHTTPError,
+    NewsNotFoundError,
+    AlreadyAssignedCategoryHTTPError,
+    CSVDecodeError,
+    CSVDecodeHTTPError,
+    MissingCSVHeadersHTTPError,
+    MissingCSVHeadersError,
+    UploadNotFoundError,
+    UploadNotFoundHTTPError,
 )
 
 router = APIRouter(prefix="/news", tags=["Новости"])
 
 
+@router.get(
+    "/uploads",
+    summary="Просмотреть статусы загрузок данных",
+)
+async def check_uploads_statuses(
+    db: DBDep,
+    _: AdminAllowedDep,
+):
+    uploads = await NewsService(db).get_uploads()
+    return {
+        "total": len(uploads),
+        "data": uploads,
+    }
+
+
+@router.get(
+    "/uploads/{upload_id}",
+    summary="Просмотреть статусы конкрнтной загрузки",
+)
+async def check_single_upload(
+    db: DBDep,
+    upload_id: int,
+    _: AdminAllowedDep,
+):
+    try:
+        upload: DatasetUploadDTO = await NewsService(db).get_upload(upload_id)
+    except UploadNotFoundError as exc:
+        raise UploadNotFoundHTTPError from exc
+    except ValueOutOfRangeError as exc:
+        raise ValueOutOfRangeHTTPError(detail=exc.detail) from exc
+    return upload
+
+
 @router.post(
-    "/",
+    "/uploads",
     summary="Загрузить размеченные данные для обучения",
 )
 async def upload_denormalized_news(
@@ -29,8 +76,20 @@ async def upload_denormalized_news(
     _: AdminAllowedDep,
 ):
     content = await file.read()
-    response = await NewsService(db).upload_denormalized_news(content)
-    return response
+    try:
+        upload = await NewsService(db).upload_denormalized_news(content)
+    except CSVDecodeError as exc:
+        raise CSVDecodeHTTPError from exc
+    except MissingCSVHeadersError as exc:
+        raise MissingCSVHeadersHTTPError(detail=exc.detail) from exc
+
+    return ORJSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "upload_id": upload.id,
+        },
+    )
+
 
 @router.post(
     "/{news_id}",
@@ -40,7 +99,16 @@ async def add_denormalized_news(
     db: DBDep,
     news_id: int,
     category: NewsCategory,
-): ...
+    _: AdminAllowedDep,
+):
+    try:
+        return await NewsService(db).add_denormalized_news(news_id, category)
+    except DenormalizedNewsAlreadyExistsError as exc:
+        raise DenormalizedNewsAlreadyExistsHTTPError from exc
+    except AlreadyAssignedCategoryError as exc:
+        raise AlreadyAssignedCategoryHTTPError from exc
+    except NewsNotFoundError as exc:
+        raise NewsNotFoundHTTPError from exc
 
 
 @router.get(
@@ -53,9 +121,7 @@ async def get_all_news(
     db: DBDep,
     pagination: PaginationDep,
     search_after: str | None = Query(None, description="Курсор для пагинации"),
-    channel_ids: list[int] | None = Query(
-        None, description="Channel IDs"
-    ),
+    channel_ids: list[int] | None = Query(None, description="Channel IDs"),
     query: str | None = Query(None, description="Поисковый запрос"),
     recent_first: bool = Query(True, description="Сначала новые"),
 ) -> NewsResponse:

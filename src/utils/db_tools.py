@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from src.repos.subscriptions import SubsRepo
 from src.repos.auth import AuthRepo, TokenRepo
-from src.repos.news import NewsRepo, DenormNewsRepo
+from src.repos.news import NewsRepo, DenormNewsRepo, DatasetUploadRepo
 from src.repos.channels import ChannelRepo
 from src.models.base import Base
 from src.utils.exceptions import MissingTablesError
@@ -23,6 +23,7 @@ class DBManager:
         self.session: AsyncSession = self.session_factory()
         self.channels = ChannelRepo(self.session)
         self.news = NewsRepo(self.session)
+        self.uploads = DatasetUploadRepo(self.session)
         self.denorm_news = DenormNewsRepo(self.session)
         self.auth = AuthRepo(self.session)
         self.tokens = TokenRepo(self.session)
@@ -41,7 +42,6 @@ class DBManager:
 
 
 class DBHealthChecker:
-
     def __init__(self, engine: AsyncEngine):
         self.engine = engine
 
