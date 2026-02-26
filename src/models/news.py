@@ -38,7 +38,7 @@ class News(Base, PrimaryKeyMixin, TimingMixin):
 class DenormalizedNews(Base, PrimaryKeyMixin, TimingMixin):
     __tablename__ = "news_denormalized"
     title: Mapped[str] = mapped_column(String(255))
-    summary: Mapped[str] = mapped_column(Text())
+    summary: Mapped[str | None] = mapped_column(Text(), default=None)
     category: Mapped[NewsCategory] = mapped_column(
         ENUM(NewsCategory, name="newscategory_enum")
     )
