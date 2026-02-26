@@ -81,6 +81,7 @@ class AddNewsDTO(ParsedNewsDTO):
 
 class NewsDTO(AddNewsDTO):
     id: int
+    category: NewsCategory | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -107,6 +108,7 @@ class NewsResponseDTO(BaseDTO):
     link: str
     summary: str
     source: str
+    category: NewsCategory | None = None
     channel_id: int
     published: str
     created_at: str
