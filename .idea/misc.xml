@@ -4,7 +4,11 @@
     <option name="sdkName" value="Poetry (Feed-Fusion)" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (Feed-Fusion)" project-jdk-type="Python SDK" />
+  <component name="PyrightConfiguration">
+    <option name="enabled" value="true" />
+  </component>
   <component name="RuffConfiguration">
-    <option name="executableDiscoveryMode" value="PATH" />
+    <option name="enabled" value="true" />
+    <option name="pathToExecutable" value="C:\Users\vaven\.pyenv\pyenv-win\shims\ruff" />
   </component>
 </project>

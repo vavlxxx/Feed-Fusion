@@ -27,13 +27,13 @@ from src.utils.redis_manager import redis_manager
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     logger = get_logger("src")
 
     await redis_manager.connect()
     logger.info("Successfully connected to Redis!")
 
-    FastAPICache.init(RedisBackend(redis_manager._redis), prefix="fastapi-cache")
+    FastAPICache.init(RedisBackend(redis_manager.redis_obj), prefix="fastapi-cache")
     logger.info("FastAPI Cache has been initialized!")
 
     await DBHealthChecker(engine=engine).check()

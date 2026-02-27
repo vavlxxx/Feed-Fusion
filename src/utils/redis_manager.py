@@ -10,24 +10,25 @@ class RedisManager:
     def __init__(self, host: str, port: int):
         self.host = host
         self.port = port
+        self.redis_obj: Redis | None = None
 
     async def connect(self) -> Redis:
-        self._redis = Redis(host=self.host, port=self.port)
-        await self._redis.ping()  # type: ignore
-        return self._redis
+        self.redis_obj = Redis(host=self.host, port=self.port)
+        await self.redis_obj.ping()  # type: ignore
+        return self.redis_obj
 
     async def set(self, key: Any, value: Any, ex: int | None = 120):
         b_key, b_value = pickle.dumps(key), pickle.dumps(value)
-        await self._redis.set(name=b_key, value=b_value, ex=ex)
+        await self.redis_obj.set(name=b_key, value=b_value, ex=ex)
 
     async def get(self, key: Any):
         b_key = pickle.dumps(key)
-        b_value = await self._redis.get(name=b_key)
+        b_value = await self.redis_obj.get(name=b_key)
         return pickle.loads(b_value)
 
     async def close(self):
-        if self._redis:
-            await self._redis.close()
+        if self.redis_obj:
+            await self.redis_obj.close()
 
 
 redis_manager = RedisManager(
