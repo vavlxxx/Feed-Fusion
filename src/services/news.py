@@ -22,7 +22,8 @@ from src.utils.exceptions import (
     ObjectExistsError,
     DenormalizedNewsAlreadyExistsError,
     CSVDecodeError,
-    MissingCSVHeadersError, UploadNotFoundError,
+    MissingCSVHeadersError,
+    UploadNotFoundError,
 )
 
 
@@ -108,14 +109,15 @@ class NewsService(BaseService):
 
         dataset_upload = DatasetUploadAddDTO()
         upload_resp = await self.db.uploads.add(dataset_upload)
-        await  self.db.commit()
-        upload_training_dataset.delay(text_data, upload_resp.model_dump())
+        await self.db.commit()
+        upload_training_dataset.delay(text_data, upload_resp.model_dump())  # pyright: ignore
         return upload_resp
 
     async def get_news_list(
         self,
         limit: int,
         # offset: int,
+        categories: list[NewsCategory] | None = None,
         query_string: str | None = None,
         channel_ids: list[int] | None = None,
         search_after: str | None = None,
@@ -134,6 +136,7 @@ class NewsService(BaseService):
         async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
             total, news, last_hit_sort = await es.search(
                 query_string=query_string,
+                categories=categories,
                 channel_ids=channel_ids,
                 limit=limit,
                 search_after=sort_param,

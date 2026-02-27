@@ -2,6 +2,8 @@ import logging
 import sys
 from pathlib import Path
 
+from schemas.news import NewsCategory
+
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from elastic_transport import ObjectApiResponse
@@ -65,7 +67,6 @@ class ESManager:
                 },
             },
         }
-
         config["mappings"] = {
             "properties": {
                 "id": {"type": "keyword"},
@@ -94,8 +95,13 @@ class ESManager:
                         }
                     },
                 },
+                "category": {
+                    "type": "keyword",
+                    "analyzer": "russian_analyzer",
+                    "fields": {"keyword": {"type": "keyword"}},
+                },
                 "source": {
-                    "type": "text",
+                    "type": "keyword",
                     "analyzer": "russian_analyzer",
                     "fields": {"keyword": {"type": "keyword"}},
                 },
@@ -104,7 +110,6 @@ class ESManager:
                 "content_hash": {"type": "keyword"},
             }
         }
-
         config["settings"]["analysis"] = {
             "analyzer": {
                 "russian_analyzer": {
@@ -173,6 +178,7 @@ class ESManager:
         self,
         limit: int,
         query_string: str | None = None,
+        categories: list[NewsCategory] | None = None,
         channel_ids: list[int] | None = None,
         search_after: list | None = None,
         recent_first: bool = True,
@@ -219,6 +225,15 @@ class ESManager:
         if channel_ids:
             filter_clauses.append(
                 {"terms": {"channel_id": [str(cid) for cid in channel_ids]}}
+            )
+
+        if categories:
+            filter_clauses.append(
+                {
+                    "terms": {
+                        "category": [str(category.value) for category in categories]
+                    }
+                }
             )
 
         query_map = {

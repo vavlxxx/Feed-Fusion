@@ -121,7 +121,10 @@ async def get_all_news(
     db: DBDep,
     pagination: PaginationDep,
     search_after: str | None = Query(None, description="Курсор для пагинации"),
-    channel_ids: list[int] | None = Query(None, description="Channel IDs"),
+    categories: list[NewsCategory] | None = Query(
+        None, description="Категории новостей"
+    ),
+    channel_ids: list[int] | None = Query(None, description="ID каналов"),
     query: str | None = Query(None, description="Поисковый запрос"),
     recent_first: bool = Query(True, description="Сначала новые"),
 ) -> NewsResponse:
@@ -132,6 +135,7 @@ async def get_all_news(
         total_count, news, search_after, offset = await NewsService(db).get_news_list(
             query_string=query,
             # offset=pagination.offset,
+            categories=categories,
             limit=pagination.limit,
             channel_ids=channel_ids,
             search_after=search_after,
