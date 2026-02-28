@@ -5,10 +5,9 @@ from sqlalchemy import func, insert, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError
 
-from src.models.news import DatasetUploads, DenormalizedNews, News
+from src.models.news import DenormalizedNews, News
 from src.repos.base import BaseRepo
 from src.repos.mappers.mappers import (
-    DatasetUploadMapper,
     DenormNewsMapper,
     NewsMapper,
 )
@@ -16,7 +15,7 @@ from src.schemas.news import (
     AddNewsDTO,
     NewsDTO,
 )
-from src.schemas.samples import DenormalizedNewsDTO, DatasetUploadDTO
+from src.schemas.samples import DenormalizedNewsDTO
 from src.utils.exceptions import ValueOutOfRangeError
 
 
@@ -45,11 +44,6 @@ class DenormNewsRepo(
         return [
             self.mapper.map_to_domain_entity(obj) for obj in objs
         ]
-
-
-class DatasetUploadRepo(BaseRepo[DatasetUploads, DatasetUploadDTO]):
-    model = DatasetUploads
-    mapper = DatasetUploadMapper
 
 
 class NewsRepo(BaseRepo[News, NewsDTO]):

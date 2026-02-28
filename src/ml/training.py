@@ -1,6 +1,4 @@
 import logging
-from dataclasses import asdict
-from typing import Any
 
 import torch
 from torch import nn
@@ -9,7 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 from src.ml.artifacts import ArtifactStore
 from src.ml.io_utils import resolve_device, seed_everything
 from src.ml.network import TextClassifier
-from src.schemas.ml import TrainConfig, TrainingSample
+from src.schemas.ml import TrainConfig, TrainingSample, TrainingResult
 from src.ml.text import normalize_training_sample, tokenize
 from src.ml.vocab import (
     Vocab,
@@ -152,7 +150,7 @@ class ModelTrainer:
         resume: bool = False,
         config: TrainConfig | None = None,
         verbose: bool = True,
-    ) -> dict[str, Any]:
+    ) -> TrainingResult:
         normalized_samples = _normalize_samples(samples)
         if not normalized_samples:
             raise ValueError("No training samples found.")
@@ -317,10 +315,10 @@ class ModelTrainer:
                 "Saved model artifacts to %s", self.store.model_dir
             )
 
-        return {
-            "model_dir": self.store.model_dir,
-            "labels": labels,
-            "metrics": metrics,
-            "config": asdict(active_config),
-            "device": str(device_obj),
-        }
+        return TrainingResult(
+            model_dir=self.store.model_dir,
+            metrics=metrics,
+            labels=labels,
+            config=active_config,
+            device=str(device_obj),
+        )

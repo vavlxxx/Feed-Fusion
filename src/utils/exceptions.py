@@ -85,12 +85,20 @@ class SubNotFoundError(ObjectNotFoundError):
     detail = "Subscription not found"
 
 
+class TrainingNotFoundError(ObjectNotFoundError):
+    detail = "Training not found"
+
+
 class CSVDecodeError(ApplicationError):
     detail = "Cannot decode provided CSV file"
 
 
 class BrokerUnavailableError(ApplicationError):
     detail = "Message broker is unavailable"
+
+
+class ModelAlreadyTrainingError(ObjectExistsError):
+    detail = "Model is currently training"
 
 
 class MissingCSVHeadersError(ApplicationError):
@@ -240,3 +248,13 @@ class MissingCSVHeadersHTTPError(ApplicationHTTPError):
 class BrokerUnavailableHTTPError(ApplicationHTTPError):
     detail = "Message broker is unavailable"
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+class ModelAlreadyTrainingHTTPError(ApplicationHTTPError):
+    detail = "Model is currently training"
+    status_code = status.HTTP_409_CONFLICT
+
+
+class TrainingNotFoundHTTPError(ApplicationHTTPError):
+    detail = "Training not found"
+    status_code = status.HTTP_404_NOT_FOUND

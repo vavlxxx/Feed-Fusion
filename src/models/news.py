@@ -1,13 +1,11 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    CheckConstraint,
     ForeignKey,
     String,
-    Text,
-    text,
+    Text, text, Boolean,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, ENUM
+from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.models.base import Base
@@ -52,31 +50,4 @@ class DenormalizedNews(Base, PrimaryKeyMixin, TimingMixin):
     category: Mapped[NewsCategory] = mapped_column(
         ENUM(NewsCategory, name="newscategory_enum")
     )
-
-
-class DatasetUploads(Base, PrimaryKeyMixin, TimingMixin):
-    __tablename__ = "dataset_uploads"  # type: ignore
-    uploads: Mapped[int] = mapped_column(
-        default=0, server_default=text("0")
-    )
-    errors: Mapped[int] = mapped_column(
-        default=0, server_default=text("0")
-    )
-    is_completed: Mapped[bool] = mapped_column(
-        default=False, server_default=text("false")
-    )
-
-    details: Mapped[list[str]] = mapped_column(
-        ARRAY(String), default=list, server_default=text("'{}'")
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            "uploads >= 0",
-            name="chk_dataset_uploads_positive_uploads",
-        ),
-        CheckConstraint(
-            "errors >= 0",
-            name="chk_dataset_uploads_positive_errors",
-        ),
-    )
+    used_in_training: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))

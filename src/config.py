@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     DEVICE: Literal["cpu", "gpu", "auto"] = "cpu"
     TRAIN_CONFIG: TrainConfig = TrainConfig()
     ENABLE_ML_AUTOCATEGORIZATION: bool = True
+    ENABLE_ML_AUTOTRAIN: bool = True
     TRAIN_DATASET_LOCATION: str = str(
         BASE_DIR / "src" / "data" / "dataset.csv"
     )

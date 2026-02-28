@@ -7,4 +7,5 @@ class PrimaryKeyMixin:
         Integer,
         primary_key=True,
         autoincrement=True,
+        sort_order=-1,
     )

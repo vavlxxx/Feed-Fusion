@@ -1,9 +1,12 @@
+from src.models import ClassificatorTraining
 from src.repos.mappers.base import DataMapper
 
 from src.models.channels import Channel
 from src.models.auth import Token, User
-from src.models.news import News, DenormalizedNews, DatasetUploads
+from src.models.news import News, DenormalizedNews
+from src.models.ml import DatasetUploads
 from src.models.subscriptions import Subscription
+from src.schemas.ml import TrainingDTO
 
 from src.schemas.subscriptions import SubscriptionDTO
 from src.schemas.auth import TokenDTO, UserDTO
@@ -47,3 +50,7 @@ class TokenMapper(DataMapper):
 class SubsMapper(DataMapper):
     model = Subscription
     schema = SubscriptionDTO
+
+class TrainingMapper(DataMapper):
+    model = ClassificatorTraining
+    schema = TrainingDTO
