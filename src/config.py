@@ -2,6 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
+from src.ml.schemas import TrainConfig
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).parent.parent
@@ -13,6 +14,13 @@ class Settings(BaseSettings):
     EMPTY_TEXT: str = "Отсутствует"
     TIMEZONE: int = +5
     PREFERRED_HOURS_PERIOD: int = 24
+
+    @property
+    def model_dir(self) -> str:
+        return str(BASE_DIR / "artifacts")
+
+    DEVICE: Literal["cpu", "gpu", "auto"] = "cpu"
+    TRAIN_CONFIG: TrainConfig = TrainConfig()
 
     ADMIN_USERNAME: str
     ADMIN_PASSWORD: str
@@ -33,7 +41,7 @@ class Settings(BaseSettings):
     DB_AUTOCOMMIT: bool = False
 
     @property
-    def DB_URL(self) -> str:
+    def db_url(self) -> str:
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     NAMING_CONVENTION: dict[str, str] = {
@@ -74,6 +82,7 @@ class Settings(BaseSettings):
     def rabbit_url(self):
         return f"amqp://{self.RABBIT_USER}:{self.RABBIT_PASSWORD}@{self.RABBIT_HOST}:{self.RABBIT_PORT}"
 
+    ES_SCHEME: Literal["http", "https"] = "http"
     ES_HOST: str
     ES_PORT: int
     ES_INDEX_NAME: str = "news"
@@ -81,7 +90,7 @@ class Settings(BaseSettings):
 
     @property
     def get_elasticsearch_url(self):
-        return f"http://{self.ES_HOST}:{self.ES_PORT}"
+        return f"{self.ES_SCHEME}://{self.ES_HOST}:{self.ES_PORT}"
 
     JWT_EXPIRE_DELTA_ACCESS: timedelta = timedelta(minutes=15)
     JWT_EXPIRE_DELTA_REFRESH: timedelta = timedelta(days=30)

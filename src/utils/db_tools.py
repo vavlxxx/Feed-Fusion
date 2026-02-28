@@ -2,11 +2,19 @@ import logging
 from typing import Self
 
 from sqlalchemy import inspect, Connection
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+)
 
 from src.repos.subscriptions import SubsRepo
 from src.repos.auth import AuthRepo, TokenRepo
-from src.repos.news import NewsRepo, DenormNewsRepo, DatasetUploadRepo
+from src.repos.news import (
+    NewsRepo,
+    DenormNewsRepo,
+    DatasetUploadRepo,
+)
 from src.repos.channels import ChannelRepo
 from src.models.base import Base
 from src.utils.exceptions import MissingTablesError
@@ -47,11 +55,15 @@ class DBHealthChecker:
 
     async def check(self):
         async with self.engine.begin() as conn:
-            is_exists, missing = await conn.run_sync(self._check_tables_existence)
+            is_exists, missing = await conn.run_sync(
+                self._check_tables_existence
+            )
             if not is_exists:
                 raise MissingTablesError(detail=missing)
 
-    def _check_tables_existence(self, conn: Connection) -> tuple[bool, set[str]]:
+    def _check_tables_existence(
+        self, conn: Connection
+    ) -> tuple[bool, set[str]]:
         inspector = inspect(conn)
         existing_tables = set(inspector.get_table_names())
         expected_tables = set(Base.metadata.tables.keys())
@@ -67,6 +79,9 @@ class DBHealthChecker:
             logger.info("(+) Table '%s' is present", table)
 
         if extra_tables:
-            logger.info("Extra tables: %s", ", ".join(map(repr, extra_tables)))
+            logger.info(
+                "Extra tables: %s",
+                ", ".join(map(repr, extra_tables)),
+            )
 
         return len(missing_tables) == 0, missing_tables

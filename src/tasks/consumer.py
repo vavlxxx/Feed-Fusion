@@ -32,8 +32,12 @@ class RMQTelegramNewsConsumer(RMQManager):
 
         try:
             self.loop = asyncio.new_event_loop()
-            self.connection: BlockingConnection = self.get_connection()
-            self.channel: BlockingChannel = self.connection.channel()
+            self.connection: BlockingConnection = (
+                self.get_connection()
+            )
+            self.channel: BlockingChannel = (
+                self.connection.channel()
+            )
             self.channel.basic_qos(prefetch_count=1)
 
             self.channel.queue_declare(
@@ -89,11 +93,17 @@ class RMQTelegramNewsConsumer(RMQManager):
             # channel_id = message["channel_id"]
 
             if isinstance(news_data.get("published"), str):
-                news_data["published"] = self._parse_datetime(news_data["published"])
+                news_data["published"] = self._parse_datetime(
+                    news_data["published"]
+                )
             if isinstance(news_data.get("created_at"), str):
-                news_data["created_at"] = self._parse_datetime(news_data["created_at"])
+                news_data["created_at"] = self._parse_datetime(
+                    news_data["created_at"]
+                )
             if isinstance(news_data.get("updated_at"), str):
-                news_data["updated_at"] = self._parse_datetime(news_data["updated_at"])
+                news_data["updated_at"] = self._parse_datetime(
+                    news_data["updated_at"]
+                )
 
             news = NewsDTO.model_validate(news_data)
 
@@ -118,7 +128,9 @@ class RMQTelegramNewsConsumer(RMQManager):
                     subscription_id,
                 )
             else:
-                channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
+                channel.basic_nack(
+                    delivery_tag=delivery_tag, requeue=True
+                )
                 logger.warning(
                     "Message NACKed (requeued): news_id=%s, subscription_id=%s",
                     news.id,
@@ -127,11 +139,17 @@ class RMQTelegramNewsConsumer(RMQManager):
 
         except json.JSONDecodeError as e:
             logger.error("Failed to parse message JSON: %s", e)
-            channel.basic_nack(delivery_tag=delivery_tag, requeue=False)
+            channel.basic_nack(
+                delivery_tag=delivery_tag, requeue=False
+            )
 
         except Exception as e:
-            logger.error("Error processing message: %s", e, exc_info=True)
-            channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
+            logger.error(
+                "Error processing message: %s", e, exc_info=True
+            )
+            channel.basic_nack(
+                delivery_tag=delivery_tag, requeue=True
+            )
 
     @staticmethod
     def _parse_datetime(date_str: str) -> datetime:
@@ -154,7 +172,9 @@ class RMQTelegramNewsConsumer(RMQManager):
         logger.warning("Could not parse datetime: %s", date_str)
         return datetime.now()
 
-    async def send_news_to_telegram(self, telegram_id: str, news: NewsDTO) -> bool:
+    async def send_news_to_telegram(
+        self, telegram_id: str, news: NewsDTO
+    ) -> bool:
         try:
             message = format_message(
                 title=news.title,
@@ -176,7 +196,11 @@ class RMQTelegramNewsConsumer(RMQManager):
                     text=message,
                 )
 
-            logger.info("Successfully sent news_id=%s to chat=%s", news.id, telegram_id)
+            logger.info(
+                "Successfully sent news_id=%s to chat=%s",
+                news.id,
+                telegram_id,
+            )
 
             await asyncio.sleep(random.uniform(0.5, 1.5))
             return True

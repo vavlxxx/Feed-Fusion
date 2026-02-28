@@ -12,7 +12,9 @@ class AuthRepo(BaseRepo[User, UserDTO]):
     model = User
     mapper = AuthMapper
 
-    async def get_user_with_passwd(self, **filter_by) -> UserWithPasswordDTO:
+    async def get_user_with_passwd(
+        self, **filter_by
+    ) -> UserWithPasswordDTO:
         query = select(self.model).filter_by(**filter_by)
         result = await self.session.execute(query)
         try:

@@ -1,12 +1,12 @@
 import json
 import logging
-import pika
 
+import pika
 from pika import BlockingConnection
 from pika.adapters.blocking_connection import BlockingChannel
 
-from src.schemas.base import DateTimeEncoder
 from src.config import settings
+from src.schemas.base import DateTimeEncoder
 from src.utils.rmq_manager import RMQManager
 
 logger = logging.getLogger("src.tasks.rabbitmq.publisher")
@@ -14,16 +14,23 @@ logger = logging.getLogger("src.tasks.rabbitmq.publisher")
 
 class RMQPublisher(RMQManager):
     def publish(self, message: dict):
-        connection = None
         try:
-            self.connection: BlockingConnection = self.get_connection()
-            self.channel: BlockingChannel = self.connection.channel()
+            self.connection: BlockingConnection = (
+                self.get_connection()
+            )
+            self.channel: BlockingChannel = (
+                self.connection.channel()
+            )
 
-            self.channel.queue_declare(queue=settings.TELEGRAM_NEWS_QUEUE, durable=True)
+            self.channel.queue_declare(
+                queue=settings.TELEGRAM_NEWS_QUEUE, durable=True
+            )
             self.channel.basic_publish(
                 exchange="",
                 routing_key=settings.TELEGRAM_NEWS_QUEUE,
-                body=json.dumps(message, cls=DateTimeEncoder, ensure_ascii=False),
+                body=json.dumps(
+                    message, cls=DateTimeEncoder, ensure_ascii=False
+                ),
                 properties=pika.BasicProperties(
                     delivery_mode=2,
                     content_type="application/json",
@@ -40,5 +47,5 @@ class RMQPublisher(RMQManager):
             logger.error("Error publishing to queue: %s", exc)
             raise
         finally:
-            if connection and not connection.is_closed:
-                connection.close()
+            if self.connection and not self.connection.is_closed:
+                self.connection.close()

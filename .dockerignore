@@ -1,8 +1,19 @@
-.venv
-.ruff_cache
-.vscode
-.pytest_cache
-__pycache__
+.venv/
+.ruff_cache/
+.vscode/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.idea
+
+# Файлы сборки и документация
 Dockerfile
-celerybeat*
+.dockerignore
 README.md
+
+# Данные и артефакты
+src/artifacts/
+src/data/dataset.csv
+
+# Логи и временные файлы Celery
+celerybeat*

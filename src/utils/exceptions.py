@@ -15,7 +15,9 @@ class MissingTablesError(ApplicationError):
 
     def __init__(self, detail: set | None = None):
         if detail is not None and isinstance(detail, set):
-            self.detail = f"{self.detail}: %s" % ", ".join(map(repr, detail))
+            self.detail = f"{self.detail}: %s" % ", ".join(
+                map(repr, detail)
+            )
         super().__init__(self.detail)
 
 
@@ -92,7 +94,9 @@ class MissingCSVHeadersError(ApplicationError):
 
     def __init__(self, detail: set | None = None):
         if detail and isinstance(detail, set):
-            self.detail = f"{self.detail}: %s" % ",".join(map(repr, detail))
+            self.detail = f"{self.detail}: %s" % ",".join(
+                map(repr, detail)
+            )
         super().__init__(self.detail)
 
 
@@ -103,7 +107,9 @@ class ApplicationHTTPError(HTTPException):
     def __init__(self, detail: str | None = None):
         if detail is not None:
             self.detail = detail
-        super().__init__(detail=self.detail, status_code=self.status_code)
+        super().__init__(
+            detail=self.detail, status_code=self.status_code
+        )
 
 
 class ValueOutOfRangeHTTPError(ApplicationHTTPError):

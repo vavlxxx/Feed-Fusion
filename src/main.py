@@ -33,7 +33,10 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     await redis_manager.connect()
     logger.info("Successfully connected to Redis!")
 
-    FastAPICache.init(RedisBackend(redis_manager.redis_obj), prefix="fastapi-cache")
+    FastAPICache.init(
+        RedisBackend(redis_manager.redis),
+        prefix="fastapi-cache",
+    )
     logger.info("FastAPI Cache has been initialized!")
 
     await DBHealthChecker(engine=engine).check()
@@ -57,7 +60,9 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Successfully connected to Elasticsearch!")
         if settings.ES_RESET_INDEX:
             await es.delete_index(index_name=settings.ES_INDEX_NAME)
-            logger.info("Deleted old index: %s", settings.ES_INDEX_NAME)
+            logger.info(
+                "Deleted old index: %s", settings.ES_INDEX_NAME
+            )
 
     if settings.MODE == "PROD":
         await bot.send_message(
@@ -86,7 +91,9 @@ app = FastAPI(
 STATIC_DIR = Path(__file__).parent / "static"
 INDEX_FILE = STATIC_DIR / "index.html"
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount(
+    "/static", StaticFiles(directory=STATIC_DIR), name="static"
+)
 
 
 @app.get("/")

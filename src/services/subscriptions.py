@@ -1,5 +1,8 @@
 from src.schemas.news import NewsDTO
-from src.schemas.subscriptions import SubscriptionAddDTO, SubscriptionDTO
+from src.schemas.subscriptions import (
+    SubscriptionAddDTO,
+    SubscriptionDTO,
+)
 from src.services.base import BaseService
 from src.services.channels import ChannelService
 from src.utils.exceptions import (
@@ -13,10 +16,14 @@ from src.utils.exceptions import (
 
 
 class SubsService(BaseService):
-    async def get_subscriptions(self, uid: str) -> list[SubscriptionDTO]:
+    async def get_subscriptions(
+        self, uid: str
+    ) -> list[SubscriptionDTO]:
         return await self.db.subs.get_all_filtered(user_id=uid)
 
-    async def create_subscription(self, uid: int, channel_id: int) -> SubscriptionDTO:
+    async def create_subscription(
+        self, uid: int, channel_id: int
+    ) -> SubscriptionDTO:
         user = await self.db.auth.get_one(id=uid)
         if user.telegram_id is None:
             raise MisingTelegramError

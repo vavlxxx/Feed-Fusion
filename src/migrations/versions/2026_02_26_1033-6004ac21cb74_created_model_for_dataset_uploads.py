@@ -29,7 +29,12 @@ def upgrade() -> None:
             server_default=sa.text("0"),
             nullable=False,
         ),
-        sa.Column("errors", sa.Integer(), server_default=sa.text("0"), nullable=False),
+        sa.Column(
+            "errors",
+            sa.Integer(),
+            server_default=sa.text("0"),
+            nullable=False,
+        ),
         sa.Column(
             "is_completed",
             sa.Boolean(),
@@ -42,7 +47,9 @@ def upgrade() -> None:
             server_default=sa.text("'{}'"),
             nullable=False,
         ),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), autoincrement=True, nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(),
@@ -57,13 +64,19 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint(
             "errors >= 0",
-            name=op.f("ck_dataset_uploads_chk_dataset_uploads_positive_errors"),
+            name=op.f(
+                "ck_dataset_uploads_chk_dataset_uploads_positive_errors"
+            ),
         ),
         sa.CheckConstraint(
             "uploads >= 0",
-            name=op.f("ck_dataset_uploads_chk_dataset_uploads_positive_uploads"),
+            name=op.f(
+                "ck_dataset_uploads_chk_dataset_uploads_positive_uploads"
+            ),
         ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_dataset_uploads")),
+        sa.PrimaryKeyConstraint(
+            "id", name=op.f("pk_dataset_uploads")
+        ),
     )
 
 

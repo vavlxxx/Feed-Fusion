@@ -1,3 +1,4 @@
+import logging
 from dataclasses import asdict
 from typing import Any
 
@@ -5,12 +6,19 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from .artifacts import ArtifactStore
-from .io_utils import resolve_device, seed_everything
-from .network import TextClassifier
-from .schemas import TrainConfig, TrainingSample
-from .text import normalize_training_sample, tokenize
-from .vocab import Vocab, build_label_map, build_vocab, split_samples
+from src.ml.artifacts import ArtifactStore
+from src.ml.io_utils import resolve_device, seed_everything
+from src.ml.network import TextClassifier
+from src.ml.schemas import TrainConfig, TrainingSample
+from src.ml.text import normalize_training_sample, tokenize
+from src.ml.vocab import (
+    Vocab,
+    build_label_map,
+    build_vocab,
+    split_samples,
+)
+
+logger = logging.getLogger(__file__)
 
 
 class _TextDataset(Dataset):
@@ -85,10 +93,14 @@ def _train_epoch(model, loader, loss_fn, optimizer, device):
         optimizer.step()
 
         total_loss += loss.item() * labels.size(0)
-        total_correct += (torch.argmax(logits, dim=-1) == labels).sum().item()
+        total_correct += (
+            (torch.argmax(logits, dim=-1) == labels).sum().item()
+        )
         total_samples += labels.size(0)
 
-    return total_loss / max(total_samples, 1), total_correct / max(total_samples, 1)
+    return total_loss / max(total_samples, 1), total_correct / max(
+        total_samples, 1
+    )
 
 
 @torch.inference_mode()
@@ -106,13 +118,19 @@ def _evaluate(model, loader, loss_fn, device):
         loss = loss_fn(logits, labels)
 
         total_loss += loss.item() * labels.size(0)
-        total_correct += (torch.argmax(logits, dim=-1) == labels).sum().item()
+        total_correct += (
+            (torch.argmax(logits, dim=-1) == labels).sum().item()
+        )
         total_samples += labels.size(0)
 
-    return total_loss / max(total_samples, 1), total_correct / max(total_samples, 1)
+    return total_loss / max(total_samples, 1), total_correct / max(
+        total_samples, 1
+    )
 
 
-def _normalize_samples(samples: list[TrainingSample]) -> list[tuple[str, str]]:
+def _normalize_samples(
+    samples: list[TrainingSample],
+) -> list[tuple[str, str]]:
     normalized: list[tuple[str, str]] = []
     for sample in samples:
         text, category = normalize_training_sample(sample)
@@ -122,7 +140,9 @@ def _normalize_samples(samples: list[TrainingSample]) -> list[tuple[str, str]]:
 
 
 class ModelTrainer:
-    def __init__(self, model_dir: str = "artifacts", device: str = "auto"):
+    def __init__(
+        self, model_dir: str = "artifacts", device: str = "auto"
+    ):
         self.store = ArtifactStore(model_dir=model_dir)
         self.device = device
 
@@ -142,10 +162,16 @@ class ModelTrainer:
         device_obj = resolve_device(self.device)
 
         if resume:
-            vocab, labels, stored, state, _ = self.store.load_resume_bundle(self.device)
-            label_to_idx = {label: index for index, label in enumerate(labels)}
+            vocab, labels, stored, state, _ = (
+                self.store.load_resume_bundle(self.device)
+            )
+            label_to_idx = {
+                label: index for index, label in enumerate(labels)
+            }
             missing_labels = {
-                label for _, label in normalized_samples if label not in label_to_idx
+                label
+                for _, label in normalized_samples
+                if label not in label_to_idx
             }
             if missing_labels:
                 missing = ", ".join(sorted(missing_labels))
@@ -174,7 +200,9 @@ class ModelTrainer:
             seed=active_config.seed,
         )
         if not train_samples:
-            raise ValueError("Train split is empty. Decrease val_split.")
+            raise ValueError(
+                "Train split is empty. Decrease val_split."
+            )
 
         train_loader = DataLoader(
             _TextDataset(train_samples, vocab, label_to_idx),
@@ -200,7 +228,9 @@ class ModelTrainer:
             model.load_state_dict(state)
 
         if active_config.balance:
-            weights = _compute_class_weights(train_samples, label_to_idx).to(device_obj)
+            weights = _compute_class_weights(
+                train_samples, label_to_idx
+            ).to(device_obj)
             loss_fn = nn.CrossEntropyLoss(weight=weights)
         else:
             loss_fn = nn.CrossEntropyLoss()
@@ -211,7 +241,10 @@ class ModelTrainer:
             weight_decay=active_config.weight_decay,
         )
 
-        metrics: dict[str, list[dict[str, float]]] = {"train": [], "val": []}
+        metrics: dict[str, list[dict[str, float]]] = {
+            "train": [],
+            "val": [],
+        }
         best_val_acc = -1.0
         saved = False
 
@@ -224,7 +257,11 @@ class ModelTrainer:
                 device=device_obj,
             )
             metrics["train"].append(
-                {"epoch": epoch, "loss": train_loss, "accuracy": train_acc}
+                {
+                    "epoch": epoch,
+                    "loss": train_loss,
+                    "accuracy": train_acc,
+                }
             )
 
             if val_samples:
@@ -235,12 +272,20 @@ class ModelTrainer:
                     device=device_obj,
                 )
                 metrics["val"].append(
-                    {"epoch": epoch, "loss": val_loss, "accuracy": val_acc}
+                    {
+                        "epoch": epoch,
+                        "loss": val_loss,
+                        "accuracy": val_acc,
+                    }
                 )
                 if verbose:
-                    print(
-                        f"Epoch {epoch}: train_loss={train_loss:.4f} train_acc={train_acc:.4f} "
-                        f"val_loss={val_loss:.4f} val_acc={val_acc:.4f}"
+                    logger.info(
+                        "Epoch %d: train_loss=%f train_acc=%f val_loss=%f val_acc=%f",
+                        epoch,
+                        train_loss,
+                        train_acc,
+                        val_loss,
+                        val_acc,
                     )
                 if val_acc >= best_val_acc:
                     best_val_acc = val_acc
@@ -248,8 +293,11 @@ class ModelTrainer:
                     saved = True
             else:
                 if verbose:
-                    print(
-                        f"Epoch {epoch}: train_loss={train_loss:.4f} train_acc={train_acc:.4f}"
+                    logger.info(
+                        "Epoch %d: train_loss=%f train_acc=%f",
+                        epoch,
+                        train_loss,
+                        train_acc,
                     )
                 self.store.save_model_state(model)
                 saved = True
@@ -265,7 +313,9 @@ class ModelTrainer:
         )
 
         if verbose:
-            print(f"Saved model artifacts to {self.store.model_dir}")
+            logger.info(
+                "Saved model artifacts to %s", self.store.model_dir
+            )
 
         return {
             "model_dir": self.store.model_dir,

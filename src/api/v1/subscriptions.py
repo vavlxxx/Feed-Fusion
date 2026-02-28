@@ -46,7 +46,9 @@ async def create_subscription(
     ## 📺 Подписаться на новостной канал
     """
     try:
-        sub: SubscriptionDTO = await SubsService(db).create_subscription(
+        sub: SubscriptionDTO = await SubsService(
+            db
+        ).create_subscription(
             uid=int(uid),
             channel_id=channel_id,
         )

@@ -9,7 +9,12 @@ from src.api.v1.dependencies.auth import AdminAllowedDep
 from src.api.v1.dependencies.db import DBDep
 from src.api.v1.dependencies.pagination import PaginationDep
 from src.api.v1.responses.news import NEWS_RESPONSES
-from src.schemas.news import NewsResponse, PagingInfo, NewsCategory, DatasetUploadDTO
+from src.schemas.news import (
+    NewsResponse,
+    PagingInfo,
+    NewsCategory,
+    DatasetUploadDTO,
+)
 from src.services.news import NewsService
 from src.utils.exceptions import (
     ChannelNotFoundError,
@@ -58,7 +63,9 @@ async def check_single_upload(
     _: AdminAllowedDep,
 ):
     try:
-        upload: DatasetUploadDTO = await NewsService(db).get_upload(upload_id)
+        upload: DatasetUploadDTO = await NewsService(db).get_upload(
+            upload_id
+        )
     except UploadNotFoundError as exc:
         raise UploadNotFoundHTTPError from exc
     except ValueOutOfRangeError as exc:
@@ -77,7 +84,9 @@ async def upload_denormalized_news(
 ):
     content = await file.read()
     try:
-        upload = await NewsService(db).upload_denormalized_news(content)
+        upload = await NewsService(db).upload_denormalized_news(
+            content
+        )
     except CSVDecodeError as exc:
         raise CSVDecodeHTTPError from exc
     except MissingCSVHeadersError as exc:
@@ -102,7 +111,9 @@ async def add_denormalized_news(
     _: AdminAllowedDep,
 ):
     try:
-        return await NewsService(db).add_denormalized_news(news_id, category)
+        return await NewsService(db).add_denormalized_news(
+            news_id, category
+        )
     except DenormalizedNewsAlreadyExistsError as exc:
         raise DenormalizedNewsAlreadyExistsHTTPError from exc
     except AlreadyAssignedCategoryError as exc:
@@ -120,11 +131,15 @@ async def add_denormalized_news(
 async def get_all_news(
     db: DBDep,
     pagination: PaginationDep,
-    search_after: str | None = Query(None, description="Курсор для пагинации"),
+    search_after: str | None = Query(
+        None, description="Курсор для пагинации"
+    ),
     categories: list[NewsCategory] | None = Query(
         None, description="Категории новостей"
     ),
-    channel_ids: list[int] | None = Query(None, description="ID каналов"),
+    channel_ids: list[int] | None = Query(
+        None, description="ID каналов"
+    ),
     query: str | None = Query(None, description="Поисковый запрос"),
     recent_first: bool = Query(True, description="Сначала новые"),
 ) -> NewsResponse:
@@ -132,7 +147,9 @@ async def get_all_news(
     ## 🗞️ Получить список всех новостей
     """
     try:
-        total_count, news, search_after, offset = await NewsService(db).get_news_list(
+        total_count, news, search_after, offset = await NewsService(
+            db
+        ).get_news_list(
             query_string=query,
             # offset=pagination.offset,
             categories=categories,

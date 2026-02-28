@@ -1,5 +1,9 @@
 from src.services.base import BaseService
-from src.schemas.channels import ChannelDTO, ChannelAddDTO, ChannelUpdateDTO
+from src.schemas.channels import (
+    ChannelDTO,
+    ChannelAddDTO,
+    ChannelUpdateDTO,
+)
 from src.utils.exceptions import (
     ObjectExistsError,
     ChannelExistsError,
@@ -44,7 +48,9 @@ class ChannelService(BaseService):
             raise ChannelNotFoundError from exc
         except ObjectExistsError as exc:
             raise ChannelExistsError from exc
-        channel: ChannelDTO = await self.db.channels.get_one(id=channel_id)
+        channel: ChannelDTO = await self.db.channels.get_one(
+            id=channel_id
+        )
         return channel
 
     async def delete_channel(self, channel_id: int) -> None:

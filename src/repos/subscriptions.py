@@ -13,7 +13,9 @@ class SubsRepo(BaseRepo[Subscription, SubscriptionDTO]):
     mapper = SubsMapper
 
     async def get_all_with_user(self):
-        query = select(self.model).options(joinedload(Subscription.user))
+        query = select(self.model).options(
+            joinedload(Subscription.user)
+        )
         result = await self.session.execute(query)
         return [
             SubscriptionWithUserDTO.model_validate(obj)

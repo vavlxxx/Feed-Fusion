@@ -1,10 +1,14 @@
 from sqlalchemy import NullPool
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from src.config import settings
 
 engine = create_async_engine(
-    url=settings.DB_URL,
+    url=settings.db_url,
     echo=settings.DB_ECHO,
 )
 
@@ -17,7 +21,7 @@ sessionmaker = async_sessionmaker(
 )
 
 engine_null_pool = create_async_engine(
-    url=settings.DB_URL,
+    url=settings.db_url,
     poolclass=NullPool,
 )
 

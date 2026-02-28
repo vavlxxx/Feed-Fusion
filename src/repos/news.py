@@ -1,18 +1,29 @@
 from typing import Sequence
 
 from asyncpg import DataError
-from sqlalchemy import func, select, insert
+from sqlalchemy import func, insert, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError
 
-from src.models.news import News, DatasetUploads, DenormalizedNews
+from src.models.news import DatasetUploads, DenormalizedNews, News
 from src.repos.base import BaseRepo
-from src.repos.mappers.mappers import NewsMapper, DenormNewsMapper, DatasetUploadMapper
-from src.schemas.news import AddNewsDTO, NewsDTO, DenormalizedNewsDTO, DatasetUploadDTO
+from src.repos.mappers.mappers import (
+    DatasetUploadMapper,
+    DenormNewsMapper,
+    NewsMapper,
+)
+from src.schemas.news import (
+    AddNewsDTO,
+    DatasetUploadDTO,
+    DenormalizedNewsDTO,
+    NewsDTO,
+)
 from src.utils.exceptions import ValueOutOfRangeError
 
 
-class DenormNewsRepo(BaseRepo[DenormalizedNews, DenormalizedNewsDTO]):
+class DenormNewsRepo(
+    BaseRepo[DenormalizedNews, DenormalizedNewsDTO]
+):
     model = DenormalizedNews
     mapper = DenormNewsMapper
 
@@ -32,7 +43,9 @@ class DenormNewsRepo(BaseRepo[DenormalizedNews, DenormalizedNewsDTO]):
         )
         result = await self.session.execute(insert_stmt)
         objs = result.scalars().all()
-        return [self.mapper.map_to_domain_entity(obj) for obj in objs]
+        return [
+            self.mapper.map_to_domain_entity(obj) for obj in objs
+        ]
 
 
 class DatasetUploadRepo(BaseRepo[DatasetUploads, DatasetUploadDTO]):
@@ -68,10 +81,15 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
             result = await self.session.execute(query)
         except DBAPIError as exc:
             if isinstance(exc.orig.__cause__, DataError):  # type: ignore
-                raise ValueOutOfRangeError(detail=exc.orig.__cause__.args[0]) from exc  # type: ignore
+                raise ValueOutOfRangeError(
+                    detail=exc.orig.__cause__.args[0]  # type: ignore
+                ) from exc
             raise exc
 
-        return [self.mapper.map_to_domain_entity(obj) for obj in result.scalars().all()]
+        return [
+            self.mapper.map_to_domain_entity(obj)
+            for obj in result.scalars().all()
+        ]
 
     async def get_hashes_by_hashes(self, hashes) -> list[str]:
         stmt = select(self.model.content_hash).where(
@@ -80,7 +98,9 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
         result = await self.session.execute(stmt)
         return list(set(row[0] for row in result.all()))
 
-    async def add_bulk_upsert(self, data: Sequence[AddNewsDTO]) -> list[NewsDTO]:
+    async def add_bulk_upsert(
+        self, data: Sequence[AddNewsDTO]
+    ) -> list[NewsDTO]:
         add_obj_stmt = (
             pg_insert(self.model)
             .values([item.model_dump() for item in data])
@@ -92,7 +112,10 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
         )
 
         result = await self.session.execute(add_obj_stmt)
-        return [self.mapper.map_to_domain_entity(obj) for obj in result.scalars().all()]
+        return [
+            self.mapper.map_to_domain_entity(obj)
+            for obj in result.scalars().all()
+        ]
 
     async def get_all_filtered_with_pagination(
         self,
@@ -111,7 +134,10 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
         )
 
         query = (
-            select(self.model, total_count_subquery.label("total_count"))
+            select(
+                self.model,
+                total_count_subquery.label("total_count"),
+            )
             .filter_by(**filter_by)
             .order_by(self.model.published.desc())
             .limit(limit)
@@ -122,7 +148,9 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
             result = await self.session.execute(query)
         except DBAPIError as exc:
             if isinstance(exc.orig.__cause__, DataError):  # type: ignore
-                raise ValueOutOfRangeError(detail=exc.orig.__cause__.args[0]) from exc  # type: ignore
+                raise ValueOutOfRangeError(
+                    detail=exc.orig.__cause__.args[0]  # type: ignore
+                ) from exc
             raise exc
 
         rows = result.fetchall()
@@ -135,6 +163,8 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
             return total_count, []
 
         total_count = rows[0].total_count
-        news: list[NewsDTO] = [self.mapper.map_to_domain_entity(row[0]) for row in rows]
+        news: list[NewsDTO] = [
+            self.mapper.map_to_domain_entity(row[0]) for row in rows
+        ]
 
         return total_count, news

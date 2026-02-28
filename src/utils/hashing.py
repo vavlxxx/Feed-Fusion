@@ -9,10 +9,14 @@ class HashManager:
         hashed_pwd_bytes = bcrypt.hashpw(pwd_bytes, salt)
         return hashed_pwd_bytes.decode(encoding="utf-8")
 
-    def _verify_password(self, password: str, hashed_password: str) -> bool:
+    def _verify_password(
+        self, password: str, hashed_password: str
+    ) -> bool:
         return bcrypt.checkpw(
             password=password.encode(encoding="utf-8"),
-            hashed_password=hashed_password.encode(encoding="utf-8"),
+            hashed_password=hashed_password.encode(
+                encoding="utf-8"
+            ),
         )
 
     def _hash_token(self, token: str) -> str:

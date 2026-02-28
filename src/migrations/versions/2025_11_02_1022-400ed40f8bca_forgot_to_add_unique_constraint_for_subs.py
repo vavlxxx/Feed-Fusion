@@ -30,5 +30,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_constraint(
-        op.f("uq_subscriptions_user_id"), "subscriptions", type_="unique"
+        op.f("uq_subscriptions_user_id"),
+        "subscriptions",
+        type_="unique",
     )

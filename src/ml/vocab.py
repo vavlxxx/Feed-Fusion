@@ -3,27 +3,37 @@ from typing import Dict, Iterable, Sequence
 
 import torch
 
-from .text import tokenize
+from src.ml.text import tokenize
 
 
 class Vocab:
-    def __init__(self, token_to_idx: Dict[str, int], unk_token: str = "<unk>"):
+    def __init__(
+        self, token_to_idx: Dict[str, int], unk_token: str = "<unk>"
+    ):
         self.token_to_idx = token_to_idx
         self.unk_token = unk_token
         self.unk_idx = token_to_idx[unk_token]
 
     def encode(self, tokens: Sequence[str]) -> list[int]:
-        return [self.token_to_idx.get(token, self.unk_idx) for token in tokens]
+        return [
+            self.token_to_idx.get(token, self.unk_idx)
+            for token in tokens
+        ]
 
     def to_dict(self) -> dict[str, object]:
-        return {"token_to_idx": self.token_to_idx, "unk_token": self.unk_token}
+        return {
+            "token_to_idx": self.token_to_idx,
+            "unk_token": self.unk_token,
+        }
 
     @classmethod
     def from_dict(cls, payload: dict[str, object]) -> "Vocab":
-        return cls(payload["token_to_idx"], payload["unk_token"])
+        return cls(payload["token_to_idx"], payload["unk_token"])  # type: ignore
 
 
-def build_label_map(labels: Iterable[str]) -> tuple[dict[str, int], list[str]]:
+def build_label_map(
+    labels: Iterable[str],
+) -> tuple[dict[str, int], list[str]]:
     label_to_idx: dict[str, int] = {}
     idx_to_label: list[str] = []
     for label in labels:
@@ -43,7 +53,11 @@ def build_vocab(
     for text in texts:
         counter.update(tokenize(text))
 
-    tokens = [token for token, count in counter.items() if count >= min_freq]
+    tokens = [
+        token
+        for token, count in counter.items()
+        if count >= min_freq
+    ]
     tokens.sort(key=lambda token: counter[token], reverse=True)
 
     if max_size and max_size > 1:
@@ -64,7 +78,9 @@ def split_samples(
         return list(samples), []
 
     generator = torch.Generator().manual_seed(seed)
-    indices = torch.randperm(len(samples), generator=generator).tolist()
+    indices = torch.randperm(
+        len(samples), generator=generator
+    ).tolist()
     val_size = int(len(samples) * val_split)
     val_indices = set(indices[:val_size])
 

@@ -26,7 +26,9 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("channel_id", sa.Integer(), nullable=False),
         sa.Column("last_news_id", sa.Integer(), nullable=False),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), autoincrement=True, nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(),
@@ -54,9 +56,14 @@ def upgrade() -> None:
             ["users.id"],
             name=op.f("fk_subscriptions_user_id_users"),
         ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_subscriptions")),
+        sa.PrimaryKeyConstraint(
+            "id", name=op.f("pk_subscriptions")
+        ),
     )
-    op.add_column("users", sa.Column("telegram_id", sa.String(), nullable=True))
+    op.add_column(
+        "users",
+        sa.Column("telegram_id", sa.String(), nullable=True),
+    )
 
 
 def downgrade() -> None:

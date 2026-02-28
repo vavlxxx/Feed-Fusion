@@ -2,9 +2,14 @@ from typing import Any, Iterable
 
 import torch
 
-from .artifacts import ArtifactStore
-from .schemas import PredictionInput, PredictionResult, TopPrediction
-from .text import normalize_prediction_input, tokenize
+from src.ml.artifacts import ArtifactStore
+from src.ml.network import TextClassifier
+from src.ml.schemas import (
+    PredictionInput,
+    PredictionResult,
+    TopPrediction,
+)
+from src.ml.text import normalize_prediction_input, tokenize
 
 
 def _encode_texts(
@@ -37,7 +42,7 @@ class ModelPredictor:
     ):
         self.store = ArtifactStore(model_dir=model_dir)
         self.device = device
-        self.model = None
+        self.model: TextClassifier | None = None  # type: ignore
         self.vocab = None
         self.labels: list[str] = []
         self.device_obj = None
@@ -45,29 +50,46 @@ class ModelPredictor:
             self.reload()
 
     def reload(self) -> None:
-        model, vocab, labels, _, device_obj = self.store.load_predictor_bundle(self.device)
-        self.model = model
+        loaded_model, vocab, labels, _, device_obj = (
+            self.store.load_predictor_bundle(self.device)
+        )
+        self.model = loaded_model
         self.vocab = vocab
         self.labels = labels
         self.device_obj = device_obj
 
     def _require_loaded(self) -> None:
-        if self.model is None or self.vocab is None or self.device_obj is None:
-            raise RuntimeError("Model is not loaded. Call reload() first.")
+        if (
+            self.model is None
+            or self.vocab is None
+            or self.device_obj is None
+        ):
+            raise RuntimeError(
+                "Model is not loaded. Call reload() first."
+            )
 
-    def predict_raw(self, inputs: list[PredictionInput]) -> list[dict[str, Any]]:
+    def predict_raw(
+        self,
+        inputs: list[PredictionInput],
+    ) -> list[dict[str, Any]]:
         if not inputs:
             raise ValueError("Provide at least one input model.")
 
         self._require_loaded()
+        self.model: TextClassifier
+
         texts: list[str] = []
         for index, item in enumerate(inputs):
             normalized = normalize_prediction_input(item)
             if not normalized:
-                raise ValueError(f"Input at index {index} is empty after normalization.")
+                raise ValueError(
+                    f"Input at index {index} is empty after normalization."
+                )
             texts.append(normalized)
 
-        input_ids, offsets = _encode_texts(texts=texts, vocab=self.vocab)
+        input_ids, offsets = _encode_texts(
+            texts=texts, vocab=self.vocab
+        )
         input_ids = input_ids.to(self.device_obj)
         offsets = offsets.to(self.device_obj)
 
@@ -76,10 +98,13 @@ class ModelPredictor:
             probs = torch.softmax(logits, dim=-1).cpu().tolist()
 
         results: list[dict[str, Any]] = []
-        for row in probs:
-            best_index = int(max(range(len(row)), key=lambda idx: row[idx]))
+        for input_, row in zip(inputs, probs):
+            best_index = int(
+                max(range(len(row)), key=lambda idx: row[idx])
+            )
             results.append(
                 {
+                    "news_id": input_.news_id,
                     "category": self.labels[best_index],
                     "confidence": float(row[best_index]),
                     "probabilities": {
@@ -166,8 +191,15 @@ class ModelPredictor:
                 probabilities={} if include_probabilities else None,
             )
 
-        normalized = {label: value / total for label, value in probabilities.items()}
-        ordered = sorted(normalized.items(), key=lambda item: item[1], reverse=True)
+        normalized = {
+            label: value / total
+            for label, value in probabilities.items()
+        }
+        ordered = sorted(
+            normalized.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
         safe_top_k = max(int(top_k), 1)
         best_label, best_confidence = ordered[0]
 
@@ -186,10 +218,14 @@ class ModelPredictor:
             category=selected_category,
             confidence=float(best_confidence),
             top_k=[
-                TopPrediction(category=label, confidence=float(confidence))
+                TopPrediction(
+                    category=label, confidence=float(confidence)
+                )
                 for label, confidence in ordered[:safe_top_k]
             ],
             raw_category=raw_category,
             reason=reason,
-            probabilities=normalized if include_probabilities else None,
+            probabilities=normalized
+            if include_probabilities
+            else None,
         )

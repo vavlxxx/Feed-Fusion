@@ -45,7 +45,9 @@ async def login(
     ## 🔒 Войти в существующий аккаунт
     """
     try:
-        token_response: TokenResponseDTO = await AuthService(db).login_user(
+        token_response: TokenResponseDTO = await AuthService(
+            db
+        ).login_user(
             login_data=login_data,
             response=response,
         )
@@ -106,7 +108,9 @@ async def update_profile(
     """
     ## 👤 Обновить профиль пользователя
     """
-    profile = await AuthService(db).update_profile(uid=uid, data=data)
+    profile = await AuthService(db).update_profile(
+        uid=uid, data=data
+    )
     return profile
 
 
@@ -123,7 +127,9 @@ async def refresh(
     """
     ## 🗝️ Получить новые access и refresh токены
     """
-    token_response: TokenResponseDTO = await AuthService(db).update_tokens(
+    token_response: TokenResponseDTO = await AuthService(
+        db
+    ).update_tokens(
         uid=uid,
         response=response,
     )
