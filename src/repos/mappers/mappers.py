@@ -11,7 +11,7 @@ from src.schemas.channels import ChannelDTO
 from src.schemas.news import (
     NewsDTO,
 )
-from schemas.samples import DenormalizedNewsDTO, DatasetUploadDTO
+from src.schemas.samples import DenormalizedNewsDTO, DatasetUploadDTO
 
 
 class ChannelMapper(DataMapper):

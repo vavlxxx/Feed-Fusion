@@ -8,7 +8,7 @@ from kombu.exceptions import OperationalError
 from src.schemas.news import (
     NewsUpdateDTO,
 )
-from schemas.samples import DenormalizedNewsAddDTO, DenormalizedNewsDTO, DatasetUploadAddDTO
+from src.schemas.samples import DenormalizedNewsAddDTO, DenormalizedNewsDTO, DatasetUploadAddDTO
 from src.schemas.enums import NewsCategory
 from src.tasks.ml import upload_training_dataset
 from src.config import settings

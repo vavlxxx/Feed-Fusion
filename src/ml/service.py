@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from config import settings
+from src.config import settings
 from src.ml.prediction import ModelPredictor
 from src.schemas.ml import (
     PredictionInput,

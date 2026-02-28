@@ -11,7 +11,7 @@ from src.schemas.news import (
     NewsDTO,
     NewsUpdateDTO,
 )
-from schemas.samples import DenormalizedNewsAddDTO, DenormalizedNewsDTO, DatasetUploadUpdateDTO, \
+from src.schemas.samples import DenormalizedNewsAddDTO, DenormalizedNewsDTO, DatasetUploadUpdateDTO, \
     DatasetUploadDTO
 from src.schemas.enums import NewsCategory
 from src.tasks.app import celery_app
