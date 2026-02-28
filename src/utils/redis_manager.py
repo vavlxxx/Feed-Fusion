@@ -17,11 +17,21 @@ class RedisManager:
         await self.redis_obj.ping()  # type: ignore
         return self.redis_obj
 
+    @property
+    def redis(self) -> Redis:
+        if not self.redis_obj:
+            raise RuntimeError("Redis not connected")
+        return self.redis_obj
+
     async def set(self, key: Any, value: Any, ex: int | None = 120):
+        if not self.redis_obj:
+            raise RuntimeError("Redis not connected")
         b_key, b_value = pickle.dumps(key), pickle.dumps(value)
         await self.redis_obj.set(name=b_key, value=b_value, ex=ex)
 
     async def get(self, key: Any):
+        if not self.redis_obj:
+            raise RuntimeError("Redis not connected")
         b_key = pickle.dumps(key)
         b_value = await self.redis_obj.get(name=b_key)
         return pickle.loads(b_value)

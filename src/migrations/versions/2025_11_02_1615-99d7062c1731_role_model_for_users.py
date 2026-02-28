@@ -2,7 +2,9 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from alembic_postgresql_enum.sql_commands.enum_type import create_type
+from alembic_postgresql_enum.sql_commands.enum_type import (
+    create_type,
+)
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -14,7 +16,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    userrole_enum = postgresql.ENUM("ADMIN", "CUSTOMER", name="userrole")
+    userrole_enum = postgresql.ENUM(
+        "ADMIN", "CUSTOMER", name="userrole"
+    )
     userrole_enum.create(op.get_bind())
 
     op.add_column(
@@ -35,7 +39,12 @@ def downgrade() -> None:
     """Downgrade schema."""
     op.add_column(
         "users",
-        sa.Column("email", sa.VARCHAR(), autoincrement=False, nullable=True),
+        sa.Column(
+            "email",
+            sa.VARCHAR(),
+            autoincrement=False,
+            nullable=True,
+        ),
     )
     op.drop_column("users", "role")
     op.execute("DROP TYPE IF EXISTS userrole CASCADE")

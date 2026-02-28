@@ -10,7 +10,9 @@ class TextClassifier(nn.Module):
         dropout: float,
     ):
         super().__init__()
-        self.embedding = nn.EmbeddingBag(vocab_size, embed_dim, mode="mean")
+        self.embedding = nn.EmbeddingBag(
+            vocab_size, embed_dim, mode="mean"
+        )
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(embed_dim, num_classes)
 

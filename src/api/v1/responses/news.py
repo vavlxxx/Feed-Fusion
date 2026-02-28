@@ -3,7 +3,10 @@ from typing import Any, Dict
 from fastapi import status
 
 from src.schemas.news import NewsResponse
-from src.utils.exceptions import ChannelNotFoundHTTPError, ValueOutOfRangeHTTPError
+from src.utils.exceptions import (
+    ChannelNotFoundHTTPError,
+    ValueOutOfRangeHTTPError,
+)
 
 NEWS_RESPONSES: Dict[int | str, Dict[str, Any]] | None = {
     status.HTTP_200_OK: {
@@ -44,13 +47,21 @@ NEWS_RESPONSES: Dict[int | str, Dict[str, Any]] | None = {
     status.HTTP_404_NOT_FOUND: {
         "description": "Канал не найден",
         "content": {
-            "application/json": {"example": {"detail": ChannelNotFoundHTTPError.detail}}
+            "application/json": {
+                "example": {
+                    "detail": ChannelNotFoundHTTPError.detail
+                }
+            }
         },
     },
     status.HTTP_422_UNPROCESSABLE_ENTITY: {
         "description": "Ошибка валидации",
         "content": {
-            "application/json": {"example": {"detail": ValueOutOfRangeHTTPError.detail}}
+            "application/json": {
+                "example": {
+                    "detail": ValueOutOfRangeHTTPError.detail
+                }
+            }
         },
     },
 }

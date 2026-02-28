@@ -26,7 +26,11 @@ AUTH_REFRESH_RESPONSES: Dict[int | str, Dict[str, Any]] | None = {
     status.HTTP_403_FORBIDDEN: {
         "description": "Отозванный или просроченный refresh токен",
         "content": {
-            "application/json": {"example": {"detail": WithdrawnTokenHTTPError.detail}}
+            "application/json": {
+                "example": {
+                    "detail": WithdrawnTokenHTTPError.detail
+                }
+            }
         },
     },
     status.HTTP_422_UNPROCESSABLE_CONTENT: {
@@ -87,7 +91,9 @@ AUTH_LOGIN_RESPONSES: Dict[int | str, Dict[str, Any]] | None = {
         "description": "Неверные данные для входа",
         "content": {
             "application/json": {
-                "example": {"detail": InvalidLoginDataHTTPError.detail}
+                "example": {
+                    "detail": InvalidLoginDataHTTPError.detail
+                }
             }
         },
     },
@@ -110,7 +116,9 @@ AUTH_REGISTER_RESPONSES: Dict[int | str, Dict[str, Any]] | None = {
     status.HTTP_409_CONFLICT: {
         "description": "Пользователь с таким username уже зарегистрирован",
         "content": {
-            "application/json": {"example": {"detail": UserExistsHTTPError.detail}}
+            "application/json": {
+                "example": {"detail": UserExistsHTTPError.detail}
+            }
         },
     },
 }
@@ -132,7 +140,9 @@ AUTH_PROFILE_RESPONSES: Dict[int | str, Dict[str, Any]] | None = {
     status.HTTP_404_NOT_FOUND: {
         "description": "Пользователь не найден",
         "content": {
-            "application/json": {"example": {"detail": UserNotFoundHTTPError.detail}}
+            "application/json": {
+                "example": {"detail": UserNotFoundHTTPError.detail}
+            }
         },
     },
     status.HTTP_422_UNPROCESSABLE_CONTENT: {

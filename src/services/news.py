@@ -110,7 +110,9 @@ class NewsService(BaseService):
         dataset_upload = DatasetUploadAddDTO()
         upload_resp = await self.db.uploads.add(dataset_upload)
         await self.db.commit()
-        upload_training_dataset.delay(text_data, upload_resp.model_dump())  # pyright: ignore
+        upload_training_dataset.delay(
+            text_data, upload_resp.model_dump()
+        )  # pyright: ignore
         return upload_resp
 
     async def get_news_list(
@@ -133,7 +135,9 @@ class NewsService(BaseService):
         current_cursor = CursorEncoder().decode_cursor(search_after)
         sort_param = current_cursor.get("sort", None)
 
-        async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
+        async with ESManager(
+            index_name=settings.ES_INDEX_NAME
+        ) as es:
             total, news, last_hit_sort = await es.search(
                 query_string=query_string,
                 categories=categories,

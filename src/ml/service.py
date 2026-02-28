@@ -1,8 +1,13 @@
 from typing import Any
 
-from .prediction import ModelPredictor
-from .schemas import PredictionInput, PredictionResult, TrainConfig, TrainingSample
-from .training import ModelTrainer
+from src.ml.prediction import ModelPredictor
+from src.ml.schemas import (
+    PredictionInput,
+    PredictionResult,
+    TrainConfig,
+    TrainingSample,
+)
+from src.ml.training import ModelTrainer
 
 
 class NewsClassifierService:
@@ -12,7 +17,9 @@ class NewsClassifierService:
         device: str = "auto",
         autoload_model: bool = True,
     ):
-        self.trainer = ModelTrainer(model_dir=model_dir, device=device)
+        self.trainer = ModelTrainer(
+            model_dir=model_dir, device=device
+        )
         self.predictor = ModelPredictor(
             model_dir=model_dir,
             device=device,

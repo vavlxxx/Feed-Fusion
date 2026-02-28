@@ -25,12 +25,14 @@ class DenormalizedNewsAddDTO(BaseDTO):
 
     @field_validator("category", mode="before")
     @classmethod
-    def parse_category(cls, value: str | NewsCategory) -> NewsCategory:
+    def parse_category(
+        cls, value: str | NewsCategory
+    ) -> NewsCategory:
         if isinstance(value, str):
             try:
                 return NewsCategory(value)
             except ValueError:
-                raise ValueError(f"Неизвестная категория: {value}")
+                raise ValueError("unknown category: %s" % value)
         return value
 
 
@@ -88,6 +90,18 @@ class NewsDTO(AddNewsDTO):
 
 class NewsUpdateDTO(BaseDTO):
     category: NewsCategory | None = None
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def parse_category(
+        cls, value: str | NewsCategory
+    ) -> NewsCategory:
+        if isinstance(value, str):
+            try:
+                return NewsCategory(value)
+            except ValueError:
+                raise ValueError("unknown category: %s" % value)
+        return value
 
 
 class PagingInfo(BaseDTO):

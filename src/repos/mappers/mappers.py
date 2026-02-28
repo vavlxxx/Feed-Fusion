@@ -8,7 +8,11 @@ from src.models.subscriptions import Subscription
 from src.schemas.subscriptions import SubscriptionDTO
 from src.schemas.auth import TokenDTO, UserDTO
 from src.schemas.channels import ChannelDTO
-from src.schemas.news import NewsDTO, DenormalizedNewsDTO, DatasetUploadDTO
+from src.schemas.news import (
+    NewsDTO,
+    DenormalizedNewsDTO,
+    DatasetUploadDTO,
+)
 
 
 class ChannelMapper(DataMapper):

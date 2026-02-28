@@ -4,6 +4,7 @@ from typing import Optional
 
 @dataclass(slots=True)
 class PredictionInput:
+    news_id: int
     title: str
     summary: str
 
@@ -11,7 +12,7 @@ class PredictionInput:
 @dataclass(slots=True)
 class TrainingSample:
     title: str
-    summary: str
+    summary: str | None
     category: str
 
 
@@ -44,4 +45,3 @@ class PredictionResult:
     raw_category: Optional[str]
     reason: Optional[str]
     probabilities: Optional[dict[str, float]] = None
-

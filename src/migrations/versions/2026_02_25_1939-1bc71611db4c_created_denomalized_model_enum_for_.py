@@ -46,7 +46,9 @@ def upgrade() -> None:
             ),
             nullable=False,
         ),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), autoincrement=True, nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(),
@@ -59,7 +61,9 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_news_denormalized")),
+        sa.PrimaryKeyConstraint(
+            "id", name=op.f("pk_news_denormalized")
+        ),
     )
     op.add_column(
         "news",

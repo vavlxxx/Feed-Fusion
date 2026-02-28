@@ -1,13 +1,13 @@
-from .prediction import ModelPredictor
-from .schemas import (
+from src.ml.prediction import ModelPredictor
+from src.ml.schemas import (
     PredictionInput,
     PredictionResult,
     TopPrediction,
     TrainConfig,
     TrainingSample,
 )
-from .service import NewsClassifierService
-from .training import ModelTrainer
+from src.ml.service import NewsClassifierService
+from src.ml.training import ModelTrainer
 
 __all__ = [
     "ModelPredictor",

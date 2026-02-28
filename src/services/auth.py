@@ -68,7 +68,9 @@ class AuthService(BaseService, HashManager):
             type=TokenType.ACCESS,
         )
 
-    def create_refresh_token(self, payload: dict) -> CreatedTokenDTO:
+    def create_refresh_token(
+        self, payload: dict
+    ) -> CreatedTokenDTO:
         return self._generate_token(
             payload=payload,
             expires_delta=settings.JWT_EXPIRE_DELTA_REFRESH,
@@ -90,17 +92,23 @@ class AuthService(BaseService, HashManager):
         self, login_data: LoginData, response: Response
     ) -> TokenResponseDTO:
         try:
-            user: UserWithPasswordDTO = await self.db.auth.get_user_with_passwd(
-                username=login_data.username
+            user: UserWithPasswordDTO = (
+                await self.db.auth.get_user_with_passwd(
+                    username=login_data.username
+                )
             )
         except ObjectNotFoundError as exc:
             raise InvalidLoginDataError from exc
 
-        is_same = self._verify_password(login_data.password, user.hashed_password)
+        is_same = self._verify_password(
+            login_data.password, user.hashed_password
+        )
         if not user or not is_same:
             raise InvalidLoginDataError
 
-        return await self.update_tokens(user=user, response=response)
+        return await self.update_tokens(
+            user=user, response=response
+        )
 
     async def update_tokens(
         self,
@@ -116,7 +124,9 @@ class AuthService(BaseService, HashManager):
             payload["is_admin"] = True
 
         access_token = self.create_access_token(payload=payload)
-        refresh_token = self.create_refresh_token(payload={"sub": f"{user.id}"})
+        refresh_token = self.create_refresh_token(
+            payload={"sub": f"{user.id}"}
+        )
 
         hashed_refresh_token = self._hash_token(refresh_token.token)
 
@@ -148,7 +158,9 @@ class AuthService(BaseService, HashManager):
         register_data: RegisterData,
         is_admin: bool = False,
     ) -> UserDTO:
-        hashed_password = self._hash_password(register_data.password)
+        hashed_password = self._hash_password(
+            register_data.password
+        )
         user_to_add = UserAddDTO(
             hashed_password=hashed_password,
             role=UserRole.ADMIN if is_admin else UserRole.CUSTOMER,
@@ -167,7 +179,9 @@ class AuthService(BaseService, HashManager):
         except ObjectNotFoundError as exc:
             raise UserNotFoundError from exc
 
-    async def update_profile(self, uid: str, data: UserUpdateDTO) -> UserDTO:
+    async def update_profile(
+        self, uid: str, data: UserUpdateDTO
+    ) -> UserDTO:
         await self.db.auth.edit(
             id=uid,
             data=data,

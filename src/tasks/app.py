@@ -3,6 +3,7 @@ import logging.config
 from pathlib import Path
 
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import setup_logging
 
 from src.config import settings
@@ -46,5 +47,13 @@ celery_app.conf.beat_schedule = {
     "check_subs": {
         "task": "check_subs",
         "schedule": 30.0,
+    },
+    "check_for_uncategorized_news": {
+        "task": "check_for_uncategorized_news",
+        "schedule": crontab(minute="*/5"),
+    },
+    "retrain_model": {
+        "task": "retrain_model",
+        "schedule": crontab(minute=0, hour=0),
     },
 }

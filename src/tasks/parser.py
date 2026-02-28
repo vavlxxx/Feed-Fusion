@@ -26,6 +26,7 @@ def get_image_from_links(links: list[dict[str, str]]):
     for link in links:
         if "image" in link.get("type", "").casefold():
             return link.get("href", None)
+    return None
 
 
 def parse_date(date: str) -> datetime | None:
@@ -42,18 +43,24 @@ def parse_date(date: str) -> datetime | None:
 
 def parse_text(item: feedparser.FeedParserDict, key: str):
     raw = item.get(key)
-    text = (raw.strip() if isinstance(raw, str) else "") or settings.EMPTY_TEXT
+    text = (
+        raw.strip() if isinstance(raw, str) else ""
+    ) or settings.EMPTY_TEXT
     return text
 
 
 async def parse_rss_feeds():
     logging.info("Started parsing...")
-    async with DBManager(session_factory=sessionmaker_null_pool) as db:
+    async with DBManager(
+        session_factory=sessionmaker_null_pool
+    ) as db:
         channels = await db.channels.get_all()
 
     for channel in channels:
         logger.info("Feed %s", channel.link)
-        feed: feedparser.FeedParserDict = feedparser.parse(channel.link)
+        feed: feedparser.FeedParserDict = feedparser.parse(
+            channel.link
+        )
         source_name = feed.feed.get("title", settings.EMPTY_TEXT)  # type: ignore
         logger.info("Source: %s", source_name)
         logger.info("News quantity: %s", len(feed.entries))
@@ -64,21 +71,29 @@ async def parse_rss_feeds():
             link: str = parse_text(entry, "link")
             title: str = parse_text(entry, "title")
 
-            published: datetime | None = parse_date(entry.get("published"))  # type: ignore
+            published: datetime | None = parse_date(
+                entry.get("published")  # type: ignore
+            )
             if not published:
                 logger.error(
-                    "#%s News (%s) has no published date, skipping...", idx, link
+                    "#%s News (%s) has no published date, skipping...",
+                    idx,
+                    link,
                 )
                 continue
-            if published < datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
-                hours=settings.PREFERRED_HOURS_PERIOD
-            ):
-                logger.debug("#%s News (%s) too old, skipping...", idx, link)
+            if published < datetime.now(timezone.utc).replace(
+                tzinfo=None
+            ) - timedelta(hours=settings.PREFERRED_HOURS_PERIOD):
+                logger.debug(
+                    "#%s News (%s) too old, skipping...", idx, link
+                )
                 continue
 
             result.append(
                 ParsedNewsDTO(
-                    image=get_image_from_links(entry.get("links", [])),  # type: ignore
+                    image=get_image_from_links(
+                        entry.get("links", [])  # type: ignore
+                    ),
                     title=title,
                     link=link,
                     summary=parse_text(entry, "summary"),
@@ -91,4 +106,6 @@ async def parse_rss_feeds():
 
         if result:
             process_news_task = cast(Task, process_news)
-            process_news_task.delay([obj.model_dump() for obj in result])
+            process_news_task.delay(
+                [obj.model_dump() for obj in result]
+            )

@@ -11,8 +11,12 @@ async def get_db() -> AsyncGenerator[DBManager, Any]:
         yield db
 
 
-async def get_db_with_null_pool() -> AsyncGenerator[DBManager, None]:
-    async with DBManager(session_factory=sessionmaker_null_pool) as db:
+async def get_db_with_null_pool() -> AsyncGenerator[
+    DBManager, None
+]:
+    async with DBManager(
+        session_factory=sessionmaker_null_pool
+    ) as db:
         yield db
 
 

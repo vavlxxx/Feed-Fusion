@@ -22,7 +22,9 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.execute("DROP TYPE IF EXISTS tokentype CASCADE")
-    tokentype_enum = postgresql.ENUM("ACCESS", "REFRESH", name="tokentype")
+    tokentype_enum = postgresql.ENUM(
+        "ACCESS", "REFRESH", name="tokentype"
+    )
     tokentype_enum.create(op.get_bind())
 
     op.create_table(
@@ -32,7 +34,9 @@ def upgrade() -> None:
         sa.Column("last_name", sa.String(), nullable=True),
         sa.Column("hashed_password", sa.String(), nullable=False),
         sa.Column("email", sa.String(), nullable=True),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), autoincrement=True, nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(),
@@ -46,7 +50,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
-        sa.UniqueConstraint("username", name=op.f("uq_users_username")),
+        sa.UniqueConstraint(
+            "username", name=op.f("uq_users_username")
+        ),
     )
     op.create_table(
         "tokens",
@@ -58,7 +64,9 @@ def upgrade() -> None:
         ),
         sa.Column("hashed_data", sa.String(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), autoincrement=True, nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(),
@@ -72,7 +80,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["owner_id"], ["users.id"], name=op.f("fk_tokens_owner_id_users")
+            ["owner_id"],
+            ["users.id"],
+            name=op.f("fk_tokens_owner_id_users"),
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_tokens")),
     )

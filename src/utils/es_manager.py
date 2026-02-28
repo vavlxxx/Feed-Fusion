@@ -2,7 +2,7 @@ import logging
 import sys
 from pathlib import Path
 
-from schemas.news import NewsCategory
+from src.schemas.news import NewsCategory
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -36,7 +36,9 @@ class ESManager:
                 raise ConnectionError
 
         except Exception as e:
-            logger.error("Failed to connect to Elasticsearch: %s", e)
+            logger.error(
+                "Failed to connect to Elasticsearch: %s", e
+            )
             await self._client.close()
             raise
 
@@ -44,14 +46,20 @@ class ESManager:
         await self._create_index()
         return self
 
-    async def delete_index(self, index_name: str) -> ObjectApiResponse:
+    async def delete_index(
+        self, index_name: str
+    ) -> ObjectApiResponse:
         try:
             return await self._client.indices.delete(
                 index=index_name,
                 ignore_unavailable=True,
             )
         except Exception as e:
-            logger.error("Failed to delete old index: %s; error: %s", self._index, e)
+            logger.error(
+                "Failed to delete old index: %s; error: %s",
+                self._index,
+                e,
+            )
             raise
 
     async def _create_index(self):
@@ -115,7 +123,11 @@ class ESManager:
                 "russian_analyzer": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": ["lowercase", "russian_stop", "russian_stemmer"],
+                    "filter": [
+                        "lowercase",
+                        "russian_stop",
+                        "russian_stemmer",
+                    ],
                 },
                 "autocomplete_analyzer": {
                     "type": "custom",
@@ -129,8 +141,14 @@ class ESManager:
                 },
             },
             "filter": {
-                "russian_stop": {"type": "stop", "stopwords": "_russian_"},
-                "russian_stemmer": {"type": "stemmer", "language": "russian"},
+                "russian_stop": {
+                    "type": "stop",
+                    "stopwords": "_russian_",
+                },
+                "russian_stemmer": {
+                    "type": "stemmer",
+                    "language": "russian",
+                },
                 "autocomplete_filter": {
                     "type": "edge_ngram",
                     "min_gram": 2,
@@ -140,13 +158,19 @@ class ESManager:
         }
 
         try:
-            return await self._client.options(ignore_status=400).indices.create(
+            return await self._client.options(
+                ignore_status=400
+            ).indices.create(
                 index=self._index,
                 mappings=config["mappings"],
                 settings=config["settings"],
             )
         except Exception as e:
-            logger.error("Failed to create index: %s; error: %s", self._index, e)
+            logger.error(
+                "Failed to create index: %s; error: %s",
+                self._index,
+                e,
+            )
             raise
 
     async def add(self, data: list[dict]) -> ObjectApiResponse:
@@ -162,16 +186,26 @@ class ESManager:
                 refresh=True,
             )
         except Exception as e:
-            logger.error("Failed to bulk index: %s; error: %s", self._index, e)
+            logger.error(
+                "Failed to bulk index: %s; error: %s",
+                self._index,
+                e,
+            )
             raise
 
         if response.get("errors"):
             error_items = [
-                item for item in response["items"] if "error" in item.get("index", {})
+                item
+                for item in response["items"]
+                if "error" in item.get("index", {})
             ]
-            logger.warning("Bulk indexing had %d errors", len(error_items))
+            logger.warning(
+                "Bulk indexing had %d errors", len(error_items)
+            )
         else:
-            logger.debug("Indexed %d documents successfully", len(data))
+            logger.debug(
+                "Indexed %d documents successfully", len(data)
+            )
         return response
 
     async def search(
@@ -192,7 +226,11 @@ class ESManager:
                         {
                             "multi_match": {
                                 "query": query_string,
-                                "fields": ["title^3", "summary^1.5", "source"],
+                                "fields": [
+                                    "title^3",
+                                    "summary^1.5",
+                                    "source",
+                                ],
                                 "type": "best_fields",
                                 "fuzziness": "AUTO",
                                 "operator": "or",
@@ -224,24 +262,44 @@ class ESManager:
         filter_clauses = []
         if channel_ids:
             filter_clauses.append(
-                {"terms": {"channel_id": [str(cid) for cid in channel_ids]}}
+                {
+                    "terms": {
+                        "channel_id": [
+                            str(cid) for cid in channel_ids
+                        ]
+                    }
+                }
             )
 
         if categories:
             filter_clauses.append(
                 {
                     "terms": {
-                        "category": [str(category.value) for category in categories]
+                        "category": [
+                            str(category.value)
+                            for category in categories
+                        ]
                     }
                 }
             )
 
         query_map = {
-            "query": {"bool": {"must": must_clauses, "filter": filter_clauses}},
+            "query": {
+                "bool": {
+                    "must": must_clauses,
+                    "filter": filter_clauses,
+                }
+            },
             "size": limit,
             "search_after": search_after,
             # "from": offset,
-            "sort": [{"published": {"order": "desc" if recent_first else "asc"}}],
+            "sort": [
+                {
+                    "published": {
+                        "order": "desc" if recent_first else "asc"
+                    }
+                }
+            ],
             "track_total_hits": True,
         }
 
@@ -252,7 +310,11 @@ class ESManager:
         )
 
         hits = response.get("hits", {}).get("hits", [])
-        total = response.get("hits", {}).get("total", {}).get("value", 0)
+        total = (
+            response.get("hits", {})
+            .get("total", {})
+            .get("value", 0)
+        )
         results = [hit["_source"] for hit in hits]
 
         last_hit = None

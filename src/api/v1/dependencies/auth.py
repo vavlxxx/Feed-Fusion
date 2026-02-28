@@ -1,7 +1,10 @@
 from typing import Annotated
 
 from fastapi import Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
 from jwt import ExpiredSignatureError
 
 from src.api.v1.dependencies.db import DBDep
@@ -18,7 +21,9 @@ from src.utils.exceptions import (
 )
 
 _bearer = HTTPBearer()
-BearerCredentials = Annotated[HTTPAuthorizationCredentials, Depends(_bearer)]
+BearerCredentials = Annotated[
+    HTTPAuthorizationCredentials, Depends(_bearer)
+]
 
 
 def _get_access_token(creds: BearerCredentials):
@@ -72,7 +77,9 @@ def resolve_token_by_type(token_type: TokenType):
             _validate_token_type(payload, token_type)
             uid = int(_extract_token_subject(payload))
             try:
-                await db.tokens.get_one(owner_id=uid, type=token_type)
+                await db.tokens.get_one(
+                    owner_id=uid, type=token_type
+                )
             except ObjectNotFoundError as exc:
                 raise WithdrawnTokenHTTPError from exc
             return uid
@@ -80,7 +87,9 @@ def resolve_token_by_type(token_type: TokenType):
         return get_sub_from_refresh
 
 
-def inspect_user_role(access_token: str = Depends(_get_access_token)) -> bool:
+def inspect_user_role(
+    access_token: str = Depends(_get_access_token),
+) -> bool:
     if access_token:
         payload = {}
         try:
@@ -99,5 +108,9 @@ def only_admins(is_admin: bool = Depends(inspect_user_role)):
 
 AdminAllowedDep = Annotated[None, Depends(only_admins)]
 IsAdminDep = Annotated[bool, Depends(inspect_user_role)]
-SubByAccess = Annotated[str, Depends(resolve_token_by_type(TokenType.ACCESS))]
-SubByRefresh = Annotated[int, Depends(resolve_token_by_type(TokenType.REFRESH))]
+SubByAccess = Annotated[
+    str, Depends(resolve_token_by_type(TokenType.ACCESS))
+]
+SubByRefresh = Annotated[
+    int, Depends(resolve_token_by_type(TokenType.REFRESH))
+]

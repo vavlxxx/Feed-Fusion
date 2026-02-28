@@ -11,7 +11,9 @@ def format_message(
     source: str,
 ) -> str:
     summary = (
-        "\n" + summary + "\n" if summary and summary != settings.EMPTY_TEXT else ""
+        "\n" + summary + "\n"
+        if summary and summary != settings.EMPTY_TEXT
+        else ""
     )
     return f"""
 📌 <i><b>{title}</b></i>

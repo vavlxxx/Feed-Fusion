@@ -3,7 +3,10 @@ import logging
 
 from src.db import sessionmaker_null_pool
 from src.schemas.news import NewsDTO
-from src.schemas.subscriptions import SubscriptionUpdateDTO, SubscriptionWithUserDTO
+from src.schemas.subscriptions import (
+    SubscriptionUpdateDTO,
+    SubscriptionWithUserDTO,
+)
 from src.tasks.app import celery_app
 from src.tasks.publisher import RMQPublisher
 from src.utils.db_tools import DBManager
@@ -17,9 +20,13 @@ def check_subs() -> None:
 
 
 async def collect_and_publish_news():
-    async with DBManager(session_factory=sessionmaker_null_pool) as db:
+    async with DBManager(
+        session_factory=sessionmaker_null_pool
+    ) as db:
         logger.info("Started checking subscriptions...")
-        subs: list[SubscriptionWithUserDTO] = await db.subs.get_all_with_user()
+        subs: list[
+            SubscriptionWithUserDTO
+        ] = await db.subs.get_all_with_user()
 
         total_published = 0
 
@@ -50,7 +57,9 @@ async def collect_and_publish_news():
                     total_published += 1
 
                 await db.subs.edit(
-                    data=SubscriptionUpdateDTO(last_news_id=news_to_send[-1].id),  # type: ignore
+                    data=SubscriptionUpdateDTO(
+                        last_news_id=news_to_send[-1].id
+                    ),  # type: ignore
                     id=sub.id,
                 )
                 await db.commit()
@@ -61,5 +70,6 @@ async def collect_and_publish_news():
                 )
 
         logger.info(
-            "Finished checking subscriptions. Total published: %s", total_published
+            "Finished checking subscriptions. Total published: %s",
+            total_published,
         )

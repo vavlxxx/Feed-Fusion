@@ -3,7 +3,11 @@ from fastapi_cache.decorator import cache
 
 from src.api.v1.dependencies.auth import AdminAllowedDep
 from src.api.v1.dependencies.db import DBDep
-from src.schemas.channels import ChannelAddDTO, ChannelDTO, ChannelUpdateDTO
+from src.schemas.channels import (
+    ChannelAddDTO,
+    ChannelDTO,
+    ChannelUpdateDTO,
+)
 from src.services.channels import ChannelService
 from src.utils.exceptions import (
     ChannelExistsError,
@@ -47,7 +51,9 @@ async def get_channel_by_id(
     ## 🔊 Возвращает один новостной канал по его id
     """
     try:
-        channel: ChannelDTO = await ChannelService(db).get_channel_by_id(channel_id)
+        channel: ChannelDTO = await ChannelService(
+            db
+        ).get_channel_by_id(channel_id)
     except ChannelNotFoundError as exc:
         raise ChannelNotFoundHTTPError from exc
     except ValueOutOfRangeError as exc:
@@ -68,7 +74,9 @@ async def add_channel(
     ## 🔊 Добавить новый канал (только для администраторов)
     """
     try:
-        channel: ChannelDTO = await ChannelService(db).add_new_channel(data)
+        channel: ChannelDTO = await ChannelService(
+            db
+        ).add_new_channel(data)
     except ChannelExistsError as exc:
         raise ChannelExistsErrorHTTPError from exc
     return channel
@@ -88,7 +96,9 @@ async def update_channel(
     ## 🔊 Обновить канал (только для администраторов)
     """
     try:
-        channel: ChannelDTO = await ChannelService(db).update_channel(data, channel_id)
+        channel: ChannelDTO = await ChannelService(
+            db
+        ).update_channel(data, channel_id)
     except ChannelNotFoundError as exc:
         raise ChannelNotFoundHTTPError from exc
     except ChannelExistsError as exc:

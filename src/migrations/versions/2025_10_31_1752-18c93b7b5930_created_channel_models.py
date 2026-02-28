@@ -26,7 +26,9 @@ def upgrade() -> None:
         sa.Column("title", sa.String(), nullable=False),
         sa.Column("link", sa.String(), nullable=False),
         sa.Column("description", sa.String(), nullable=True),
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column(
+            "id", sa.Integer(), autoincrement=True, nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(),

@@ -22,12 +22,18 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.alter_column(
-        "news_denormalized", "summary", existing_type=sa.TEXT(), nullable=True
+        "news_denormalized",
+        "summary",
+        existing_type=sa.TEXT(),
+        nullable=True,
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     op.alter_column(
-        "news_denormalized", "summary", existing_type=sa.TEXT(), nullable=False
+        "news_denormalized",
+        "summary",
+        existing_type=sa.TEXT(),
+        nullable=False,
     )

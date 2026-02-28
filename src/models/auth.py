@@ -19,7 +19,9 @@ class User(Base, PrimaryKeyMixin, TimingMixin):
     first_name: Mapped[str | None]
     last_name: Mapped[str | None]
     hashed_password: Mapped[str]
-    role: Mapped[UserRole] = mapped_column(ENUM(UserRole), default=UserRole.CUSTOMER)
+    role: Mapped[UserRole] = mapped_column(
+        ENUM(UserRole), default=UserRole.CUSTOMER
+    )
     telegram_id: Mapped[str | None]
 
     subscriptions: Mapped[list["Subscription"]] = relationship(

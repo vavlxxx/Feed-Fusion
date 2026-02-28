@@ -2,10 +2,15 @@ from dataclasses import asdict
 
 import torch
 
-from .io_utils import ensure_dir, load_json, resolve_device, save_json
-from .network import TextClassifier
-from .schemas import TrainConfig
-from .vocab import Vocab
+from src.ml.io_utils import (
+    ensure_dir,
+    load_json,
+    resolve_device,
+    save_json,
+)
+from src.ml.network import TextClassifier
+from src.ml.schemas import TrainConfig
+from src.ml.vocab import Vocab
 
 
 class ArtifactStore:
