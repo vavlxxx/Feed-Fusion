@@ -29,6 +29,8 @@ from src.utils.exceptions import (
     AlreadyAssignedCategoryHTTPError,
     CSVDecodeError,
     CSVDecodeHTTPError,
+    BrokerUnavailableError,
+    BrokerUnavailableHTTPError,
     MissingCSVHeadersHTTPError,
     MissingCSVHeadersError,
     UploadNotFoundError,
@@ -91,6 +93,8 @@ async def upload_denormalized_news(
         raise CSVDecodeHTTPError from exc
     except MissingCSVHeadersError as exc:
         raise MissingCSVHeadersHTTPError(detail=exc.detail) from exc
+    except BrokerUnavailableError as exc:
+        raise BrokerUnavailableHTTPError from exc
 
     return ORJSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
@@ -121,6 +125,23 @@ async def add_denormalized_news(
     except NewsNotFoundError as exc:
         raise NewsNotFoundHTTPError from exc
 
+
+
+@router.get(
+    "/{news_id}",
+    summary="Получить конкретную новость",
+)
+@cache(expire=60)
+async def get_news(
+    db: DBDep,
+    news_id: int,
+):
+    try:
+        return await NewsService(db).get_single_news(id=news_id)
+    except NewsNotFoundError as exc:
+        raise NewsNotFoundHTTPError from exc
+    except ValueOutOfRangeError as exc:
+        raise ValueOutOfRangeHTTPError from exc
 
 @router.get(
     "/",

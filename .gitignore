@@ -225,3 +225,4 @@ logs/
 .env.rabbitmq
 celerybeat*
 *.pem
+artifacts

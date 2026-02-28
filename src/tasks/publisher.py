@@ -13,18 +13,51 @@ logger = logging.getLogger("src.tasks.rabbitmq.publisher")
 
 
 class RMQPublisher(RMQManager):
+    def __init__(self):
+        super().__init__()
+        self._queue_declared = False
+        self.connection: BlockingConnection | None = None  # pyright: ignore
+        self.channel: BlockingConnection | None = None  # pyright: ignore
+
+    def connect(self) -> None:
+        if self.connection and not self.connection.is_closed:
+            return
+        self.connection = self.get_connection()
+        self.channel = self.connection.channel()
+        self._queue_declared = False
+
+    def close(self) -> None:
+        if self.connection and not self.connection.is_closed:
+            self.connection.close()
+        self.connection: BlockingConnection | None = None  # pyright: ignore
+        self.channel: BlockingConnection | None = None  # pyright: ignore
+        self._queue_declared = False
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def _ensure_queue(self) -> None:
+        if self._queue_declared:
+            return
+        if not self.channel:
+            raise RuntimeError(
+                "RabbitMQ channel is not initialized."
+            )
+        self.channel.queue_declare(
+            queue=settings.TELEGRAM_NEWS_QUEUE, durable=True
+        )
+        self._queue_declared = True
+
     def publish(self, message: dict):
         try:
-            self.connection: BlockingConnection = (
-                self.get_connection()
-            )
-            self.channel: BlockingChannel = (
-                self.connection.channel()
-            )
-
-            self.channel.queue_declare(
-                queue=settings.TELEGRAM_NEWS_QUEUE, durable=True
-            )
+            self.connect()
+            self.connection: BlockingConnection
+            self.channel: BlockingChannel
+            self._ensure_queue()
             self.channel.basic_publish(
                 exchange="",
                 routing_key=settings.TELEGRAM_NEWS_QUEUE,
@@ -46,6 +79,13 @@ class RMQPublisher(RMQManager):
         except Exception as exc:
             logger.error("Error publishing to queue: %s", exc)
             raise
-        finally:
-            if self.connection and not self.connection.is_closed:
-                self.connection.close()
+
+    def publish_many(self, messages: list[dict]) -> int:
+        if not messages:
+            return 0
+
+        published = 0
+        for message in messages:
+            self.publish(message)
+            published += 1
+        return published

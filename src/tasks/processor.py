@@ -77,6 +77,12 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
             await db.rollback()
             raise self.retry(exc=exc, countdown=retry_countdown)
 
+        if not settings.USE_ELASTICSEARCH:
+            logger.info(
+                "Elasticsearch disabled, skipping indexing."
+            )
+            return
+
         logger.info("Started indexing news in Elasticsearch...")
         async with ESManager(
             index_name=settings.ES_INDEX_NAME

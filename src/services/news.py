@@ -3,6 +3,8 @@ import json
 import csv
 import io
 
+from kombu.exceptions import OperationalError
+
 from src.schemas.news import (
     NewsCategory,
     DenormalizedNewsAddDTO,
@@ -24,6 +26,7 @@ from src.utils.exceptions import (
     CSVDecodeError,
     MissingCSVHeadersError,
     UploadNotFoundError,
+    BrokerUnavailableError,
 )
 
 
@@ -58,6 +61,12 @@ class NewsService(BaseService):
             return await self.db.uploads.get_one(id=upload_id)
         except ObjectNotFoundError as exc:
             raise UploadNotFoundError from exc
+
+    async def get_single_news(self, id: int):
+        try:
+            return await self.db.news.get_one(id=id)
+        except ObjectNotFoundError as exc:
+            raise NewsNotFoundError from exc
 
     async def add_denormalized_news(
         self,
@@ -110,9 +119,12 @@ class NewsService(BaseService):
         dataset_upload = DatasetUploadAddDTO()
         upload_resp = await self.db.uploads.add(dataset_upload)
         await self.db.commit()
-        upload_training_dataset.delay(
-            text_data, upload_resp.model_dump()
-        )  # pyright: ignore
+        try:
+            upload_training_dataset.delay(
+                text_data, upload_resp.model_dump()
+            )  # pyright: ignore
+        except OperationalError as exc:
+            raise BrokerUnavailableError from exc
         return upload_resp
 
     async def get_news_list(
@@ -124,7 +136,7 @@ class NewsService(BaseService):
         channel_ids: list[int] | None = None,
         search_after: str | None = None,
         recent_first: bool = True,
-    ) -> tuple[int, list[dict], str | None, int]:
+        ) -> tuple[int, list[dict], str | None, int]:
         try:
             if channel_ids:
                 for channel_id in channel_ids:
@@ -133,30 +145,45 @@ class NewsService(BaseService):
             raise ChannelNotFoundError from exc
 
         current_cursor = CursorEncoder().decode_cursor(search_after)
-        sort_param = current_cursor.get("sort", None)
+        offset = int(current_cursor.get("offset", 0) or 0)
 
-        async with ESManager(
-            index_name=settings.ES_INDEX_NAME
-        ) as es:
-            total, news, last_hit_sort = await es.search(
-                query_string=query_string,
-                categories=categories,
-                channel_ids=channel_ids,
-                limit=limit,
-                search_after=sort_param,
-                recent_first=recent_first,
-                # offset=offset,
-            )
+        if settings.USE_ELASTICSEARCH:
+            sort_param = current_cursor.get("sort", None)
+            async with ESManager(
+                index_name=settings.ES_INDEX_NAME
+            ) as es:
+                total, news, last_hit_sort = await es.search(
+                    query_string=query_string,
+                    categories=categories,
+                    channel_ids=channel_ids,
+                    limit=limit,
+                    search_after=sort_param,
+                    recent_first=recent_first,
+                )
 
+            new_cursor = None
+            if len(news) == limit:
+                new_cursor = CursorEncoder().encode_cursor(
+                    cursor={
+                        "sort": last_hit_sort,
+                        "offset": offset + len(news),
+                    }
+                )
+            return total, news, new_cursor, offset
+
+        total, news_rows = await self.db.news.search_with_pagination(
+            limit=limit,
+            offset=offset,
+            query_string=query_string,
+            categories=categories,
+            channel_ids=channel_ids,
+            recent_first=recent_first,
+        )
+        news = [row.model_dump(mode="json") for row in news_rows]
+        next_offset = offset + len(news)
         new_cursor = None
-        offset = current_cursor.get("offset", 0)
-
-        if len(news) == limit:
+        if next_offset < total:
             new_cursor = CursorEncoder().encode_cursor(
-                cursor={
-                    "sort": last_hit_sort,
-                    "offset": offset + len(news),
-                }
+                cursor={"offset": next_offset}
             )
-
         return total, news, new_cursor, offset
