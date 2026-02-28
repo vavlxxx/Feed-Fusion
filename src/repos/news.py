@@ -14,10 +14,9 @@ from src.repos.mappers.mappers import (
 )
 from src.schemas.news import (
     AddNewsDTO,
-    DatasetUploadDTO,
-    DenormalizedNewsDTO,
     NewsDTO,
 )
+from schemas.samples import DenormalizedNewsDTO, DatasetUploadDTO
 from src.utils.exceptions import ValueOutOfRangeError
 
 

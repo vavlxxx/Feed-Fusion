@@ -10,9 +10,8 @@ from src.schemas.auth import TokenDTO, UserDTO
 from src.schemas.channels import ChannelDTO
 from src.schemas.news import (
     NewsDTO,
-    DenormalizedNewsDTO,
-    DatasetUploadDTO,
 )
+from schemas.samples import DenormalizedNewsDTO, DatasetUploadDTO
 
 
 class ChannelMapper(DataMapper):
