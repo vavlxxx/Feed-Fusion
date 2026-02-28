@@ -1,6 +1,16 @@
 ﻿const API_BASE = "/api/v1";
 const PLACEHOLDER_IMAGE = "https://placehold.co/600x400";
 const ACCESS_TOKEN_KEY = "ff_access_token";
+const NEWS_CATEGORIES = [
+  { value: "Международные отношения", label: "Мир" },
+  { value: "Культура", label: "Культура" },
+  { value: "Наука и технологии", label: "Наука" },
+  { value: "Общество", label: "Общество" },
+  { value: "Экономика", label: "Экономика" },
+  { value: "Происшествия", label: "Инциденты" },
+  { value: "Спорт", label: "Спорт" },
+  { value: "Здоровье", label: "Здоровье" },
+];
 
 const state = {
   accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
@@ -13,9 +23,13 @@ const state = {
   newsCursor: null,
   hasNext: false,
   isLoading: false,
+  uploads: [],
+  trainings: [],
+  selectedTrainingId: null,
   filters: {
     query: "",
     channelIds: [],
+    categories: [],
     recentFirst: true,
     limit: 9,
   },
@@ -34,11 +48,15 @@ const dom = {
   userState: document.getElementById("userState"),
   newsMeta: document.getElementById("newsMeta"),
   activeFilter: document.getElementById("activeFilter"),
+  activeCategories: document.getElementById("activeCategories"),
   activeSort: document.getElementById("activeSort"),
   searchInput: document.getElementById("searchInput"),
   channelSelect: document.getElementById("channelSelect"),
   channelToggle: document.getElementById("channelToggle"),
   channelDropdown: document.getElementById("channelDropdown"),
+  categorySelect: document.getElementById("categorySelect"),
+  categoryToggle: document.getElementById("categoryToggle"),
+  categoryDropdown: document.getElementById("categoryDropdown"),
   sortSelect: document.getElementById("sortSelect"),
   resetFilters: document.getElementById("resetFilters"),
   applyFilters: document.getElementById("applyFilters"),
@@ -53,6 +71,18 @@ const dom = {
   registerForm: document.getElementById("registerForm"),
   channelCreateForm: document.getElementById("channelCreateForm"),
   adminChannelList: document.getElementById("adminChannelList"),
+  sampleUploadForm: document.getElementById("sampleUploadForm"),
+  sampleCsvFile: document.getElementById("sampleCsvFile"),
+  refreshUploadsBtn: document.getElementById("refreshUploadsBtn"),
+  uploadsList: document.getElementById("uploadsList"),
+  sampleLabelForm: document.getElementById("sampleLabelForm"),
+  sampleNewsId: document.getElementById("sampleNewsId"),
+  sampleCategorySelect: document.getElementById("sampleCategorySelect"),
+  trainModelForm: document.getElementById("trainModelForm"),
+  refreshTrainingsBtn: document.getElementById("refreshTrainingsBtn"),
+  trainingsList: document.getElementById("trainingsList"),
+  trainingChart: document.getElementById("trainingChart"),
+  trainingChartInfo: document.getElementById("trainingChartInfo"),
   toast: document.getElementById("toast"),
 };
 
@@ -150,11 +180,18 @@ async function fetchProfile() {
 function setUser(user) {
   state.user = user || null;
   state.isAdmin = user?.role === "admin";
+  if (!state.isAdmin) {
+    state.uploads = [];
+    state.trainings = [];
+    state.selectedTrainingId = null;
+  }
   updateAuthUI();
   renderProfile();
   renderSubscriptions();
   renderChannels();
   renderAdminChannels();
+  renderUploads();
+  renderTrainings();
 }
 
 function updateAuthUI() {
@@ -191,13 +228,14 @@ function showView(route) {
 }
 
 function requireAuth(route) {
+  const adminRoutes = ["admin-channels", "admin-samples", "admin-training"];
   if (!state.user) {
     showToast("Нужна авторизация, чтобы продолжить.");
     location.hash = "#/auth";
     showView("auth");
     return false;
   }
-  if (route === "admin" && !state.isAdmin) {
+  if (adminRoutes.includes(route) && !state.isAdmin) {
     showToast("Требуются права администратора.");
     location.hash = "#/news";
     showView("news");
@@ -220,6 +258,394 @@ function formatDate(value) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function getCategoryLabel(value) {
+  const item = NEWS_CATEGORIES.find((entry) => entry.value === value);
+  return item?.label || value || "Без категории";
+}
+
+function updateActiveCategoriesChip() {
+  if (!dom.activeCategories) return;
+  const selected = state.filters.categories;
+  if (!selected || selected.length === 0) {
+    dom.activeCategories.textContent = "Все категории";
+    return;
+  }
+  if (selected.length === 1) {
+    dom.activeCategories.textContent = getCategoryLabel(selected[0]);
+    return;
+  }
+  dom.activeCategories.textContent = `Категорий: ${selected.length}`;
+}
+
+function renderCategorySelect() {
+  if (!dom.categoryDropdown) return;
+  dom.categoryDropdown.innerHTML = "";
+
+  NEWS_CATEGORIES.forEach((category) => {
+    const label = document.createElement("label");
+    label.className = "channel-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = category.value;
+    checkbox.checked = state.filters.categories.includes(category.value);
+    checkbox.addEventListener("change", () => {
+      updateCategoryToggle();
+    });
+
+    const text = document.createElement("span");
+    text.textContent = category.label;
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    dom.categoryDropdown.appendChild(label);
+  });
+  updateCategoryToggle();
+}
+
+function getSelectedCategoryValues() {
+  if (!dom.categoryDropdown) return [];
+  return Array.from(dom.categoryDropdown.querySelectorAll("input[type='checkbox']:checked")).map(
+    (input) => input.value
+  );
+}
+
+function updateCategoryToggle() {
+  if (!dom.categoryToggle) return;
+  const selected = getSelectedCategoryValues();
+  if (selected.length === 0) {
+    dom.categoryToggle.textContent = "Все категории";
+    return;
+  }
+  if (selected.length === 1) {
+    dom.categoryToggle.textContent = getCategoryLabel(selected[0]);
+    return;
+  }
+  dom.categoryToggle.textContent = `Выбрано: ${selected.length}`;
+}
+
+function closeCategoryDropdown() {
+  if (dom.categoryDropdown) {
+    dom.categoryDropdown.hidden = true;
+  }
+}
+
+function isClickInsideCategorySelect(event) {
+  if (!dom.categorySelect) return false;
+  if (event.composedPath) {
+    return event.composedPath().includes(dom.categorySelect);
+  }
+  return dom.categorySelect.contains(event.target);
+}
+
+function clearTrainingChart(message = "Выберите обучение для отображения метрик.") {
+  if (!dom.trainingChart || !dom.trainingChartInfo) return;
+  const ctx = dom.trainingChart.getContext("2d");
+  if (!ctx) return;
+
+  const width = dom.trainingChart.width;
+  const height = dom.trainingChart.height;
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#6f5c84";
+  ctx.font = '14px "Golos Text", sans-serif';
+  ctx.textAlign = "center";
+  ctx.fillText("Нет данных для графика", width / 2, height / 2);
+  dom.trainingChartInfo.textContent = message;
+}
+
+function toAccuracySeries(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row, index) => ({
+      x: Number(row?.epoch ?? row?.step ?? index + 1),
+      y: Number(row?.accuracy),
+    }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+}
+
+function drawLine(ctx, points, color, radius = 3) {
+  if (points.length === 0) return;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    if (index === 0) {
+      ctx.moveTo(point.x, point.y);
+    } else {
+      ctx.lineTo(point.x, point.y);
+    }
+  });
+  ctx.stroke();
+
+  points.forEach((point) => {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawLegend(ctx, x, y, color, label) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y - 9, 12, 12);
+  ctx.fillStyle = "#4c1d95";
+  ctx.font = '12px "Golos Text", sans-serif';
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 18, y);
+}
+
+function renderTrainingChart(training) {
+  if (!dom.trainingChart || !dom.trainingChartInfo) return;
+  const ctx = dom.trainingChart.getContext("2d");
+  if (!ctx) return;
+
+  const width = dom.trainingChart.width;
+  const height = dom.trainingChart.height;
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+
+  if (!training) {
+    clearTrainingChart();
+    return;
+  }
+
+  const trainSeries = toAccuracySeries(training.metrics?.train);
+  const valSeries = toAccuracySeries(training.metrics?.val);
+  const allSeries = [...trainSeries, ...valSeries];
+
+  if (allSeries.length === 0) {
+    clearTrainingChart(`Обучение #${training.id}: метрики пока отсутствуют.`);
+    return;
+  }
+
+  const padding = { left: 42, right: 18, top: 20, bottom: 30 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const maxX = Math.max(...allSeries.map((point) => point.x));
+  const minX = Math.min(...allSeries.map((point) => point.x));
+  const xSpan = Math.max(1, maxX - minX);
+  const yMin = 0;
+  const yMax = 1;
+  const ySpan = yMax - yMin;
+
+  const toCanvasX = (x) => padding.left + ((x - minX) / xSpan) * plotWidth;
+  const toCanvasY = (y) => padding.top + (1 - (y - yMin) / ySpan) * plotHeight;
+
+  ctx.strokeStyle = "#e4d8fb";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i += 1) {
+    const y = padding.top + (plotHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#b9a5e8";
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, height - padding.bottom);
+  ctx.lineTo(width - padding.right, height - padding.bottom);
+  ctx.stroke();
+
+  ctx.fillStyle = "#6f5c84";
+  ctx.font = '11px "Golos Text", sans-serif';
+  ctx.textAlign = "right";
+  for (let i = 0; i <= 4; i += 1) {
+    const value = (1 - i / 4).toFixed(2);
+    const y = padding.top + (plotHeight / 4) * i + 4;
+    ctx.fillText(value, padding.left - 6, y);
+  }
+
+  ctx.textAlign = "center";
+  const firstEpoch = Math.round(minX);
+  const lastEpoch = Math.round(maxX);
+  ctx.fillText(String(firstEpoch), padding.left, height - 8);
+  ctx.fillText(String(lastEpoch), width - padding.right, height - 8);
+
+  const trainPoints = trainSeries.map((point) => ({
+    x: toCanvasX(point.x),
+    y: toCanvasY(point.y),
+  }));
+  const valPoints = valSeries.map((point) => ({
+    x: toCanvasX(point.x),
+    y: toCanvasY(point.y),
+  }));
+
+  drawLine(ctx, trainPoints, "#6d28d9");
+  drawLine(ctx, valPoints, "#14b8a6");
+
+  drawLegend(ctx, padding.left + 8, padding.top - 4, "#6d28d9", "Train accuracy");
+  drawLegend(ctx, padding.left + 160, padding.top - 4, "#14b8a6", "Val accuracy");
+  dom.trainingChartInfo.textContent = `Обучение #${training.id}: ${formatTrainingMetrics(
+    training.metrics
+  )}`;
+}
+
+function fillCategorySelect(selectNode) {
+  if (!selectNode) return;
+  selectNode.innerHTML = "";
+  NEWS_CATEGORIES.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category.value;
+    option.textContent = category.label;
+    selectNode.appendChild(option);
+  });
+}
+
+function formatTrainingMetrics(metrics) {
+  if (!metrics || typeof metrics !== "object") {
+    return "Метрики отсутствуют";
+  }
+
+  const trainRows = Array.isArray(metrics.train) ? metrics.train : [];
+  const valRows = Array.isArray(metrics.val) ? metrics.val : [];
+  const trainLast = trainRows.length > 0 ? trainRows[trainRows.length - 1] : null;
+  const valLast = valRows.length > 0 ? valRows[valRows.length - 1] : null;
+
+  const trainPart = trainLast
+    ? `train acc: ${Number(trainLast.accuracy ?? 0).toFixed(3)}`
+    : "train acc: n/a";
+  const valPart = valLast
+    ? `val acc: ${Number(valLast.accuracy ?? 0).toFixed(3)}`
+    : "val acc: n/a";
+
+  return `${trainPart}, ${valPart}`;
+}
+
+function renderUploads() {
+  if (!dom.uploadsList) return;
+  dom.uploadsList.innerHTML = "";
+  if (!state.isAdmin) return;
+
+  if (state.uploads.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "Загрузок пока нет.";
+    dom.uploadsList.appendChild(empty);
+    return;
+  }
+
+  const sorted = [...state.uploads].sort((a, b) => Number(b.id) - Number(a.id));
+  const fragment = document.createDocumentFragment();
+
+  sorted.forEach((upload) => {
+    const item = document.createElement("div");
+    item.className = "compact-item";
+    const title = document.createElement("strong");
+    title.textContent = `Импорт #${upload.id}`;
+
+    const stats = document.createElement("small");
+    stats.textContent = `uploads: ${upload.uploads}, errors: ${upload.errors}`;
+
+    const status = document.createElement("small");
+    status.textContent = upload.is_completed ? "Статус: завершен" : "Статус: в процессе";
+
+    const date = document.createElement("small");
+    date.textContent = `Обновлено: ${formatDate(upload.updated_at)}`;
+
+    item.appendChild(title);
+    item.appendChild(stats);
+    item.appendChild(status);
+    item.appendChild(date);
+    fragment.appendChild(item);
+  });
+
+  dom.uploadsList.appendChild(fragment);
+}
+
+function renderTrainings() {
+  if (!dom.trainingsList) return;
+  dom.trainingsList.innerHTML = "";
+  if (!state.isAdmin) {
+    clearTrainingChart();
+    return;
+  }
+
+  if (state.trainings.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "История обучений пуста.";
+    dom.trainingsList.appendChild(empty);
+    state.selectedTrainingId = null;
+    clearTrainingChart("История обучений пуста.");
+    return;
+  }
+
+  const sorted = [...state.trainings].sort((a, b) => Number(b.id) - Number(a.id));
+  if (!state.selectedTrainingId || !sorted.some((item) => item.id === state.selectedTrainingId)) {
+    state.selectedTrainingId = sorted[0].id;
+  }
+
+  const selectedTraining =
+    sorted.find((item) => item.id === state.selectedTrainingId) || sorted[0];
+  const fragment = document.createDocumentFragment();
+
+  sorted.forEach((training) => {
+    const item = document.createElement("div");
+    item.className = "compact-item training-item";
+    item.classList.toggle("active", training.id === selectedTraining.id);
+
+    const title = document.createElement("strong");
+    title.textContent = `Обучение #${training.id}`;
+
+    const status = document.createElement("small");
+    status.textContent = training.in_progress ? "Статус: в процессе" : "Статус: завершено";
+
+    const metrics = document.createElement("small");
+    metrics.textContent = formatTrainingMetrics(training.metrics);
+
+    const details = document.createElement("small");
+    details.textContent = training.details || "Без подробностей";
+
+    item.appendChild(title);
+    item.appendChild(status);
+    item.appendChild(metrics);
+    item.appendChild(details);
+    item.addEventListener("click", () => {
+      state.selectedTrainingId = training.id;
+      renderTrainings();
+    });
+    fragment.appendChild(item);
+  });
+
+  dom.trainingsList.appendChild(fragment);
+  renderTrainingChart(selectedTraining);
+}
+
+async function loadUploads() {
+  if (!state.isAdmin) return;
+  try {
+    const data = await requestJson("/samples/");
+    state.uploads = data.data || [];
+    renderUploads();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function loadTrainings() {
+  if (!state.isAdmin) return;
+  try {
+    const data = await requestJson("/trainings/");
+    state.trainings = data.data || [];
+    if (
+      state.trainings.length > 0 &&
+      !state.trainings.some((item) => item.id === state.selectedTrainingId)
+    ) {
+      const sorted = [...state.trainings].sort((a, b) => Number(b.id) - Number(a.id));
+      state.selectedTrainingId = sorted[0].id;
+    }
+    renderTrainings();
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 async function loadChannels() {
@@ -320,6 +746,9 @@ async function loadNews({ reset = false } = {}) {
   if (state.filters.channelIds.length > 0) {
     state.filters.channelIds.forEach((id) => params.append("channel_ids", id));
   }
+  if (state.filters.categories.length > 0) {
+    state.filters.categories.forEach((value) => params.append("categories", value));
+  }
   if (!reset && state.newsCursor) params.set("search_after", state.newsCursor);
 
   try {
@@ -369,7 +798,8 @@ function renderNews(items, append = false) {
     const meta = document.createElement("div");
     meta.className = "news-meta";
     const channelName = state.channelMap.get(item.channel_id)?.title || `Канал #${item.channel_id}`;
-    meta.textContent = `Источник: ${item.source || channelName} · ${formatDate(item.published)}`;
+    const categoryLabel = getCategoryLabel(item.category);
+    meta.textContent = `ID: ${item.id} · Источник: ${item.source || channelName} · ${categoryLabel} · ${formatDate(item.published)}`;
 
     const actions = document.createElement("div");
     actions.className = "news-actions";
@@ -686,6 +1116,57 @@ async function deleteChannel(channelId) {
   }
 }
 
+async function uploadTrainingCsv(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await apiFetch("/samples/", {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return response.json();
+}
+
+async function addLabeledSample(newsId, category) {
+  const response = await apiFetch(
+    `/samples/${newsId}?category=${encodeURIComponent(category)}`,
+    { method: "POST" }
+  );
+  if (!response.ok) {
+    throw new Error(await parseError(response));
+  }
+  return response.json();
+}
+
+function buildTrainPayload(formData) {
+  const numberFields = [
+    "epochs",
+    "batch_size",
+    "lr",
+    "val_split",
+    "embed_dim",
+    "dropout",
+  ];
+  const payload = {};
+  numberFields.forEach((field) => {
+    const raw = String(formData.get(field) || "").trim();
+    if (!raw) return;
+    payload[field] = Number(raw);
+  });
+  payload.balance = formData.get("balance") === "on";
+  return payload;
+}
+
+async function startManualTraining(payload) {
+  return requestJson("/trainings/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 function bindEvents() {
   dom.loginBtn.addEventListener("click", () => {
     location.hash = "#/auth";
@@ -708,9 +1189,11 @@ function bindEvents() {
   dom.applyFilters.addEventListener("click", () => {
     state.filters.query = dom.searchInput.value.trim();
     state.filters.channelIds = getSelectedChannelIds();
+    state.filters.categories = getSelectedCategoryValues();
     state.filters.recentFirst = dom.sortSelect.value === "true";
     state.filters.limit = 9;
     closeChannelDropdown();
+    closeCategoryDropdown();
     if (state.filters.channelIds.length === 0) {
       dom.activeFilter.textContent = "Все каналы";
     } else if (state.filters.channelIds.length === 1) {
@@ -720,12 +1203,13 @@ function bindEvents() {
       const names = getSelectedChannelNames();
       dom.activeFilter.textContent = names.length > 0 ? names.join(", ") : "Выбранные каналы";
     }
+    updateActiveCategoriesChip();
     dom.activeSort.textContent = state.filters.recentFirst ? "Сначала новые" : "Сначала старые";
     loadNews({ reset: true });
   });
 
   dom.resetFilters.addEventListener("click", () => {
-    state.filters = { query: "", channelIds: [], recentFirst: true, limit: 9 };
+    state.filters = { query: "", channelIds: [], categories: [], recentFirst: true, limit: 9 };
     dom.searchInput.value = "";
     if (dom.channelDropdown) {
       Array.from(dom.channelDropdown.querySelectorAll("input[type='checkbox']")).forEach(
@@ -734,11 +1218,21 @@ function bindEvents() {
         }
       );
     }
+    if (dom.categoryDropdown) {
+      Array.from(dom.categoryDropdown.querySelectorAll("input[type='checkbox']")).forEach(
+        (input) => {
+          input.checked = false;
+        }
+      );
+    }
     updateChannelToggle();
+    updateCategoryToggle();
     dom.sortSelect.value = "true";
     dom.activeFilter.textContent = "Все каналы";
+    dom.activeCategories.textContent = "Все категории";
     dom.activeSort.textContent = "Сначала новые";
     closeChannelDropdown();
+    closeCategoryDropdown();
     loadNews({ reset: true });
   });
 
@@ -753,6 +1247,7 @@ function bindEvents() {
     dom.channelToggle.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      closeCategoryDropdown();
       dom.channelDropdown.hidden = !dom.channelDropdown.hidden;
     });
 
@@ -760,22 +1255,40 @@ function bindEvents() {
       event.stopPropagation();
     });
 
-    document.addEventListener(
-      "pointerdown",
-      (event) => {
-        if (!isClickInsideChannelSelect(event)) {
-          closeChannelDropdown();
-        }
-      },
-      true
-    );
+  }
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closeChannelDropdown();
-      }
+  if (dom.categoryToggle && dom.categoryDropdown && dom.categorySelect) {
+    dom.categoryToggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeChannelDropdown();
+      dom.categoryDropdown.hidden = !dom.categoryDropdown.hidden;
+    });
+
+    dom.categoryDropdown.addEventListener("click", (event) => {
+      event.stopPropagation();
     });
   }
+
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (!isClickInsideChannelSelect(event)) {
+        closeChannelDropdown();
+      }
+      if (!isClickInsideCategorySelect(event)) {
+        closeCategoryDropdown();
+      }
+    },
+    true
+  );
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeChannelDropdown();
+      closeCategoryDropdown();
+    }
+  });
 
   dom.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -876,12 +1389,93 @@ function bindEvents() {
     }
   });
 
+  if (dom.refreshUploadsBtn) {
+    dom.refreshUploadsBtn.addEventListener("click", async () => {
+      await loadUploads();
+    });
+  }
+
+  if (dom.refreshTrainingsBtn) {
+    dom.refreshTrainingsBtn.addEventListener("click", async () => {
+      await loadTrainings();
+    });
+  }
+
+  if (dom.sampleUploadForm) {
+    dom.sampleUploadForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = dom.sampleCsvFile?.files?.[0];
+      if (!file) {
+        showToast("Выберите CSV-файл.");
+        return;
+      }
+
+      try {
+        const result = await uploadTrainingCsv(file);
+        showToast(`Импорт принят. ID: ${result.upload_id}`);
+        dom.sampleUploadForm.reset();
+        await loadUploads();
+      } catch (error) {
+        showToast(error.message);
+      }
+    });
+  }
+
+  if (dom.sampleLabelForm) {
+    dom.sampleLabelForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const newsId = Number(dom.sampleNewsId?.value || 0);
+      const category = String(dom.sampleCategorySelect?.value || "").trim();
+      if (!newsId || !category) {
+        showToast("Укажите ID новости и категорию.");
+        return;
+      }
+
+      try {
+        await addLabeledSample(newsId, category);
+        showToast("Пример добавлен в обучающую выборку.");
+        dom.sampleLabelForm.reset();
+        fillCategorySelect(dom.sampleCategorySelect);
+      } catch (error) {
+        showToast(error.message);
+      }
+    });
+  }
+
+  if (dom.trainModelForm) {
+    dom.trainModelForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(dom.trainModelForm);
+      const payload = buildTrainPayload(formData);
+      try {
+        const result = await startManualTraining(payload);
+        showToast(`Обучение запущено. ID: ${result.training_id}`);
+        await loadTrainings();
+      } catch (error) {
+        showToast(error.message);
+      }
+    });
+  }
+
   window.addEventListener("hashchange", handleRoute);
 }
 
 async function handleRoute() {
-  const route = location.hash.replace("#/", "") || "news";
-  if (["subscriptions", "profile", "admin"].includes(route)) {
+  const rawRoute = location.hash.replace("#/", "") || "news";
+  const availableRoutes = new Set(Array.from(dom.views).map((view) => view.id));
+  const route = availableRoutes.has(rawRoute) ? rawRoute : "news";
+  if (route !== rawRoute) {
+    location.hash = "#/news";
+  }
+
+  const protectedRoutes = [
+    "subscriptions",
+    "profile",
+    "admin-channels",
+    "admin-samples",
+    "admin-training",
+  ];
+  if (protectedRoutes.includes(route)) {
     if (!requireAuth(route)) return;
   }
   showView(route);
@@ -898,13 +1492,23 @@ async function handleRoute() {
   if (route === "profile") {
     await fetchProfile();
   }
-  if (route === "admin") {
+  if (route === "admin-channels") {
     renderAdminChannels();
+  }
+  if (route === "admin-samples") {
+    await loadUploads();
+  }
+  if (route === "admin-training") {
+    await loadTrainings();
   }
 }
 
 async function bootstrap() {
   bindEvents();
+  renderCategorySelect();
+  fillCategorySelect(dom.sampleCategorySelect);
+  updateActiveCategoriesChip();
+  clearTrainingChart();
   await loadChannels();
 
   if (state.accessToken) {
@@ -924,9 +1528,9 @@ async function bootstrap() {
 
   dom.searchInput.value = state.filters.query;
   dom.sortSelect.value = String(state.filters.recentFirst);
+  updateActiveCategoriesChip();
 
-  await loadNews({ reset: true });
-  handleRoute();
+  await handleRoute();
 
   if (dom.newsSentinel) {
     const observer = new IntersectionObserver(
