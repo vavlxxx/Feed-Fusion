@@ -8,14 +8,12 @@ from src.db import sessionmaker_null_pool
 from src.ml.schemas import PredictionInput, TrainingSample
 from src.ml.service import NewsClassifierService
 from src.schemas.news import (
-    DatasetUploadDTO,
-    DatasetUploadUpdateDTO,
-    DenormalizedNewsAddDTO,
-    DenormalizedNewsDTO,
-    NewsCategory,
     NewsDTO,
     NewsUpdateDTO,
 )
+from schemas.samples import DenormalizedNewsAddDTO, DenormalizedNewsDTO, DatasetUploadUpdateDTO, \
+    DatasetUploadDTO
+from src.schemas.enums import NewsCategory
 from src.tasks.app import celery_app
 from src.utils.db_tools import DBManager
 

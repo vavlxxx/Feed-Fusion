@@ -13,7 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from src.models.base import Base
 from src.models.mixins.primary_key import PrimaryKeyMixin
 from src.models.mixins.timing import TimingMixin
-from src.schemas.news import NewsCategory
+from src.schemas.enums import NewsCategory
 
 
 class News(Base, PrimaryKeyMixin, TimingMixin):

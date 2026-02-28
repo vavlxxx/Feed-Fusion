@@ -2,7 +2,7 @@ import logging
 import sys
 from pathlib import Path
 
-from src.schemas.news import NewsCategory
+from src.schemas.enums import NewsCategory
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
