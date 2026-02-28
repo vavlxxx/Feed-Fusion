@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 from src.ml.artifacts import ArtifactStore
 from src.ml.io_utils import resolve_device, seed_everything
 from src.ml.network import TextClassifier
-from src.ml.schemas import TrainConfig, TrainingSample
+from src.schemas.ml import TrainConfig, TrainingSample
 from src.ml.text import normalize_training_sample, tokenize
 from src.ml.vocab import (
     Vocab,

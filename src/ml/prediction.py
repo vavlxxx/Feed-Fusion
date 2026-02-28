@@ -4,7 +4,7 @@ import torch
 
 from src.ml.artifacts import ArtifactStore
 from src.ml.network import TextClassifier
-from src.ml.schemas import (
+from src.schemas.ml import (
     PredictionInput,
     PredictionResult,
     TopPrediction,

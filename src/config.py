@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.ml.schemas import TrainConfig
+from src.schemas.ml import TrainConfig
 
 BASE_DIR = Path(__file__).parent.parent
 

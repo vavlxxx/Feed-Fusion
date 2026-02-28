@@ -1,6 +1,6 @@
 import re
 
-from src.ml.schemas import PredictionInput, TrainingSample
+from src.schemas.ml import PredictionInput, TrainingSample
 
 TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
 

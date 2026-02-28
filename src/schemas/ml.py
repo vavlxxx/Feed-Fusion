@@ -1,23 +1,18 @@
-from dataclasses import dataclass
-from typing import Optional
+from src.schemas.base import BaseModel
 
-
-@dataclass(slots=True)
-class PredictionInput:
+class PredictionInput(BaseModel):
     news_id: int
     title: str
     summary: str
 
 
-@dataclass(slots=True)
-class TrainingSample:
+class TrainingSample(BaseModel):
     title: str
-    summary: str | None
+    summary: str | None = None
     category: str
 
 
-@dataclass(slots=True)
-class TrainConfig:
+class TrainConfig(BaseModel):
     seed: int = 42
     epochs: int = 10
     batch_size: int = 64
@@ -31,17 +26,15 @@ class TrainConfig:
     balance: bool = False
 
 
-@dataclass(slots=True)
-class TopPrediction:
+class TopPrediction(BaseModel):
     category: str
     confidence: float
 
 
-@dataclass(slots=True)
-class PredictionResult:
-    category: Optional[str]
+class PredictionResult(BaseModel):
+    category: str | None = None
     confidence: float
     top_k: list[TopPrediction]
-    raw_category: Optional[str]
-    reason: Optional[str]
-    probabilities: Optional[dict[str, float]] = None
+    raw_category: str | None = None
+    reason: str | None = None
+    probabilities: dict[str, float] | None = None
