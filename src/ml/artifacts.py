@@ -9,7 +9,7 @@ from src.ml.io_utils import (
     save_json,
 )
 from src.ml.network import TextClassifier
-from src.ml.schemas import TrainConfig
+from src.schemas.ml import TrainConfig
 from src.ml.vocab import Vocab
 
 

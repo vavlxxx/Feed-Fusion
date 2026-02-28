@@ -8,7 +8,7 @@ from typing import Any
 import torch
 from pydantic import ValidationError
 
-from schemas.samples import DenormalizedNewsAddDTO
+from src.schemas.samples import DenormalizedNewsAddDTO
 from src.schemas.enums import NewsCategory
 from src.utils.exceptions import (
     MissingCSVHeadersError,

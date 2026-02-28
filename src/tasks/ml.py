@@ -5,7 +5,7 @@ import logging
 
 from src.config import settings
 from src.db import sessionmaker_null_pool
-from src.ml.schemas import PredictionInput, TrainingSample
+from src.schemas.ml import PredictionInput, TrainingSample
 from src.ml.service import NewsClassifierService
 from src.schemas.news import (
     NewsDTO,

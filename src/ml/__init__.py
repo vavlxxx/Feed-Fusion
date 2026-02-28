@@ -1,5 +1,5 @@
 from src.ml.prediction import ModelPredictor
-from src.ml.schemas import (
+from src.schemas.ml import (
     PredictionInput,
     PredictionResult,
     TopPrediction,
