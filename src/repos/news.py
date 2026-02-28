@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from asyncpg import DataError
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, insert, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError
 
@@ -168,3 +168,58 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
         ]
 
         return total_count, news
+
+    async def search_with_pagination(
+        self,
+        limit: int,
+        offset: int,
+        query_string: str | None = None,
+        categories=None,
+        channel_ids=None,
+        recent_first: bool = True,
+    ) -> tuple[int, list[NewsDTO]]:
+        filters = []
+
+        if channel_ids:
+            filters.append(self.model.channel_id.in_(channel_ids))
+        if categories:
+            filters.append(self.model.category.in_(categories))
+        if query_string:
+            pattern = f"%{query_string.strip()}%"
+            filters.append(
+                or_(
+                    self.model.title.ilike(pattern),
+                    self.model.summary.ilike(pattern),
+                    self.model.source.ilike(pattern),
+                )
+            )
+
+        order = (
+            self.model.published.desc()
+            if recent_first
+            else self.model.published.asc()
+        )
+        count_query = select(func.count()).select_from(self.model)
+        if filters:
+            count_query = count_query.filter(*filters)
+
+        query = select(self.model).order_by(order)
+        if filters:
+            query = query.filter(*filters)
+        query = query.limit(limit).offset(offset)
+
+        try:
+            total_count_result = await self.session.execute(count_query)
+            result = await self.session.execute(query)
+        except DBAPIError as exc:
+            if isinstance(exc.orig.__cause__, DataError):  # type: ignore
+                raise ValueOutOfRangeError(
+                    detail=exc.orig.__cause__.args[0]  # type: ignore
+                ) from exc
+            raise exc
+
+        total_count = total_count_result.scalar() or 0
+        return total_count, [
+            self.mapper.map_to_domain_entity(obj)
+            for obj in result.scalars().all()
+        ]

@@ -69,9 +69,9 @@ class ESManager:
         config = {
             "settings": {
                 "index": {
-                    "number_of_shards": 3,
-                    "number_of_replicas": 2,
-                    "refresh_interval": "1s",
+                    "number_of_shards": 1,
+                    "number_of_replicas": 0,
+                    "refresh_interval": "30s",
                 },
             },
         }
@@ -183,7 +183,7 @@ class ESManager:
             response = await self._client.bulk(
                 index=self._index,
                 operations=operations,
-                refresh=True,
+                refresh=False,
             )
         except Exception as e:
             logger.error(

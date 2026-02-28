@@ -13,16 +13,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       rabbitmq:
-        condition: service_healthy
-      elasticsearch:
         condition: service_healthy
     command: "poetry run python ./src/gunicorn/run.py"
     volumes:
+      - ./src/data:/app/data
       - ./logs:/app/logs
       - ./src/static:/app/src/static
+    # cpus: 1.0
+    # mem_limit: 768m
 
   celery_worker:
     image: "feed_fusion:latest"
@@ -38,29 +37,16 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    command: "poetry run celery --app=src.tasks.app:celery_app worker -l INFO"
-
-  celery_beat:
-    image: "feed_fusion:latest"
-    container_name: "ffusion_celery_beat"
-    env_file:
-      - ".env.docker"
-    networks:
-      - "ffusion_net"
-    depends_on:
-      app:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    command: "poetry run celery --app=src.tasks.app:celery_app beat -l INFO"
+    command: "poetry run celery --app=src.tasks.app:celery_app worker -B -l INFO --concurrency=2 --max-tasks-per-child=100"
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./logs:/app/logs
+    # cpus: 1.0
+    # mem_limit: 768m
 
   rmq_consumer:
+    profiles:
+      - "telegram"
     container_name: ffusion_rmq_consumer
     image: "feed_fusion:latest"
     env_file:
@@ -75,15 +61,19 @@ services:
       postgres:
         condition: service_healthy
     command: "poetry run python ./src/tasks/consumer.py"
+    # cpus: 0.5
+    # mem_limit: 384m
 
 
   elasticsearch:
+    profiles:
+      - "search"
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: "ffusion_es"
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
     ports:
       - "9200:9200"
     volumes:
@@ -96,6 +86,8 @@ services:
       start_period: 60s
     networks:
       - "ffusion_net"
+    # cpus: 1.5
+    # mem_limit: 1536m
 
   # kibana:
   #   image: docker.elastic.co/kibana/kibana:9.2.0
@@ -125,8 +117,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # cpus: 0.75
+    # mem_limit: 768m
 
   redis:
+    profiles:
+      - "cache"
     image: redis:latest
     container_name: ffusion_redis
     ports:
@@ -138,10 +134,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # cpus: 0.25
+    # mem_limit: 256m
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    hostname: rabbitmq
     container_name: ffusion_rabbit
     networks:
       - "ffusion_net"
@@ -158,6 +155,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+    # cpus: 0.5
+    # mem_limit: 512m
 
 volumes:
   ffusion_rmq_data:

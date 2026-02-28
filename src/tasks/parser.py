@@ -2,6 +2,8 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import cast
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import feedparser
 from celery import Task
@@ -49,6 +51,27 @@ def parse_text(item: feedparser.FeedParserDict, key: str):
     return text
 
 
+def load_feed(link: str) -> feedparser.FeedParserDict | None:
+    request = Request(
+        link,
+        headers={"User-Agent": "FeedFusionBot/1.0"},
+    )
+    try:
+        with urlopen(
+            request, timeout=settings.PARSER_FEED_TIMEOUT_SEC
+        ) as response:
+            payload = response.read()
+    except (URLError, HTTPError, TimeoutError, OSError) as exc:
+        logger.warning("Failed to load feed %s: %s", link, exc)
+        return None
+
+    try:
+        return feedparser.parse(payload)
+    except Exception as exc:
+        logger.warning("Failed to parse feed %s: %s", link, exc)
+        return None
+
+
 async def parse_rss_feeds():
     logging.info("Started parsing...")
     async with DBManager(
@@ -58,15 +81,15 @@ async def parse_rss_feeds():
 
     for channel in channels:
         logger.info("Feed %s", channel.link)
-        feed: feedparser.FeedParserDict = feedparser.parse(
-            channel.link
-        )
+        feed = load_feed(channel.link)
+        if not feed:
+            continue
         source_name = feed.feed.get("title", settings.EMPTY_TEXT)  # type: ignore
         logger.info("Source: %s", source_name)
         logger.info("News quantity: %s", len(feed.entries))
 
         result = []
-        entries = feed.entries
+        entries = feed.entries[: settings.PARSER_MAX_ENTRIES_PER_FEED]
         for idx, entry in enumerate(entries, 1):
             link: str = parse_text(entry, "link")
             title: str = parse_text(entry, "title")

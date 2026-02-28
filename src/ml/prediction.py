@@ -36,8 +36,8 @@ def _encode_texts(
 class ModelPredictor:
     def __init__(
         self,
-        model_dir: str = "artifacts",
-        device: str = "auto",
+        model_dir: str,
+        device: str,
         autoload: bool = True,
     ):
         self.store = ArtifactStore(model_dir=model_dir)

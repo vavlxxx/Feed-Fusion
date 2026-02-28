@@ -44,13 +44,10 @@ priority = "explicit"
 [tool.poetry.dependencies]
 torch = {source = "pytorch-cpu"}
 
-[tool.poetry]
-package-mode=false
-
 [tool.ruff]
 line-length = 68
 
-[tool.pyright]
+[tool.poetry]
 package-mode = false
 
 [tool.poetry.group.dev.dependencies]

@@ -22,7 +22,7 @@ class News(Base, PrimaryKeyMixin, TimingMixin):
     link: Mapped[str] = mapped_column(String(255))
     published: Mapped[datetime]
     image: Mapped[str | None]
-    title: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(Text())
     summary: Mapped[str] = mapped_column(Text())
     source: Mapped[str] = mapped_column(String(255))
     content_hash: Mapped[str] = mapped_column(
@@ -45,7 +45,7 @@ class News(Base, PrimaryKeyMixin, TimingMixin):
 
 class DenormalizedNews(Base, PrimaryKeyMixin, TimingMixin):
     __tablename__ = "news_denormalized"  # type: ignore
-    title: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(Text())
     summary: Mapped[str | None] = mapped_column(
         Text(), default=None
     )

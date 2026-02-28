@@ -1,8 +1,8 @@
 from datetime import datetime
+from enum import Enum
 
 from bs4 import BeautifulSoup
-from pydantic import field_validator, Field
-from enum import Enum
+from pydantic import Field, field_validator
 
 from src.schemas.base import BaseDTO
 
@@ -87,10 +87,6 @@ class NewsDTO(AddNewsDTO):
     created_at: datetime
     updated_at: datetime
 
-
-class NewsUpdateDTO(BaseDTO):
-    category: NewsCategory | None = None
-
     @field_validator("category", mode="before")
     @classmethod
     def parse_category(
@@ -102,6 +98,10 @@ class NewsUpdateDTO(BaseDTO):
             except ValueError:
                 raise ValueError("unknown category: %s" % value)
         return value
+
+
+class NewsUpdateDTO(BaseDTO):
+    category: NewsCategory | None = None
 
 
 class PagingInfo(BaseDTO):
@@ -127,6 +127,18 @@ class NewsResponseDTO(BaseDTO):
     published: str
     created_at: str
     updated_at: str
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def parse_category(
+        cls, value: str | NewsCategory
+    ) -> NewsCategory:
+        if isinstance(value, str):
+            try:
+                return NewsCategory(value)
+            except ValueError:
+                raise ValueError("unknown category: %s" % value)
+        return value
 
 
 class NewsResponse(BaseDTO):

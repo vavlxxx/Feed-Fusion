@@ -20,6 +20,9 @@ from src.utils.rmq_manager import RMQManager
 from src.utils.texts import format_message
 
 logger = logging.getLogger("src.tasks.telegram_consumer")
+MAX_PROCESSING_RETRIES = 5
+DEAD_LETTER_SUFFIX = ".dead"
+TELEGRAM_SEND_TIMEOUT_SEC = 20
 
 
 class RMQTelegramNewsConsumer(RMQManager):
@@ -32,6 +35,7 @@ class RMQTelegramNewsConsumer(RMQManager):
 
         try:
             self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
             self.connection: BlockingConnection = (
                 self.get_connection()
             )
@@ -42,6 +46,10 @@ class RMQTelegramNewsConsumer(RMQManager):
 
             self.channel.queue_declare(
                 queue=settings.TELEGRAM_NEWS_QUEUE,
+                durable=True,
+            )
+            self.channel.queue_declare(
+                queue=self._dead_letter_queue(),
                 durable=True,
             )
             self.channel.basic_consume(
@@ -128,27 +136,41 @@ class RMQTelegramNewsConsumer(RMQManager):
                     subscription_id,
                 )
             else:
-                channel.basic_nack(
-                    delivery_tag=delivery_tag, requeue=True
+                self._retry_or_dead_letter(
+                    channel=channel,
+                    method=method,
+                    properties=properties,
+                    body=body,
+                    reason="telegram_send_failed",
                 )
                 logger.warning(
-                    "Message NACKed (requeued): news_id=%s, subscription_id=%s",
+                    "Message send failed: news_id=%s, subscription_id=%s",
                     news.id,
                     subscription_id,
                 )
 
         except json.JSONDecodeError as e:
             logger.error("Failed to parse message JSON: %s", e)
-            channel.basic_nack(
-                delivery_tag=delivery_tag, requeue=False
+            self._move_to_dead_letter(
+                channel=channel,
+                properties=properties,
+                body=body,
+                reason="invalid_json",
+            )
+            channel.basic_ack(
+                delivery_tag=delivery_tag,
             )
 
         except Exception as e:
             logger.error(
                 "Error processing message: %s", e, exc_info=True
             )
-            channel.basic_nack(
-                delivery_tag=delivery_tag, requeue=True
+            self._retry_or_dead_letter(
+                channel=channel,
+                method=method,
+                properties=properties,
+                body=body,
+                reason="processing_error",
             )
 
     @staticmethod
@@ -172,6 +194,85 @@ class RMQTelegramNewsConsumer(RMQManager):
         logger.warning("Could not parse datetime: %s", date_str)
         return datetime.now()
 
+    @staticmethod
+    def _retry_count(
+        properties: BasicProperties | None,
+    ) -> int:
+        headers = (properties.headers if properties else None) or {}
+        retries = headers.get("x-retries", 0)
+        try:
+            return int(retries)  # type: ignore
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _build_properties(
+        headers: dict | None = None,
+    ) -> BasicProperties:
+        return BasicProperties(
+            delivery_mode=2,
+            content_type="application/json",
+            headers=headers,
+        )
+
+    def _dead_letter_queue(self) -> str:
+        return f"{settings.TELEGRAM_NEWS_QUEUE}{DEAD_LETTER_SUFFIX}"
+
+    def _move_to_dead_letter(
+        self,
+        channel: Channel,
+        properties: BasicProperties | None,
+        body: bytes,
+        reason: str,
+    ) -> None:
+        headers = dict(
+            (properties.headers if properties else None) or {}
+        )
+        headers["x-error-reason"] = reason
+        headers["x-retries"] = self._retry_count(properties)
+        channel.basic_publish(
+            exchange="",
+            routing_key=self._dead_letter_queue(),
+            body=body,
+            properties=self._build_properties(headers=headers),
+        )
+
+    def _retry_or_dead_letter(
+        self,
+        channel: Channel,
+        method: Basic.Deliver,
+        properties: BasicProperties | None,
+        body: bytes,
+        reason: str,
+    ) -> None:
+        retries = self._retry_count(properties)
+        if retries >= MAX_PROCESSING_RETRIES:
+            self._move_to_dead_letter(
+                channel=channel,
+                properties=properties,
+                body=body,
+                reason=reason,
+            )
+            channel.basic_ack(delivery_tag=method.delivery_tag)
+            logger.error(
+                "Moved message to dead-letter queue after %d retries",
+                retries,
+            )
+            return
+
+        headers = dict(
+            (properties.headers if properties else None) or {}
+        )
+        headers["x-retries"] = retries + 1
+        headers["x-error-reason"] = reason
+        channel.basic_publish(
+            exchange="",
+            routing_key=settings.TELEGRAM_NEWS_QUEUE,
+            body=body,
+            properties=self._build_properties(headers=headers),
+        )
+        channel.basic_ack(delivery_tag=method.delivery_tag)
+
     async def send_news_to_telegram(
         self, telegram_id: str, news: NewsDTO
     ) -> bool:
@@ -185,15 +286,21 @@ class RMQTelegramNewsConsumer(RMQManager):
             )
 
             if news.image:
-                await bot.send_photo(
-                    chat_id=telegram_id,
-                    photo=news.image,
-                    caption=message,
+                await asyncio.wait_for(
+                    bot.send_photo(
+                        chat_id=telegram_id,
+                        photo=news.image,
+                        caption=message,
+                    ),
+                    timeout=TELEGRAM_SEND_TIMEOUT_SEC,
                 )
             else:
-                await bot.send_message(
-                    chat_id=telegram_id,
-                    text=message,
+                await asyncio.wait_for(
+                    bot.send_message(
+                        chat_id=telegram_id,
+                        text=message,
+                    ),
+                    timeout=TELEGRAM_SEND_TIMEOUT_SEC,
                 )
 
             logger.info(

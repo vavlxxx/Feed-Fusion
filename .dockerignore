@@ -11,9 +11,5 @@ Dockerfile
 .dockerignore
 README.md
 
-# Данные и артефакты
-src/artifacts/
-src/data/dataset.csv
-
 # Логи и временные файлы Celery
 celerybeat*

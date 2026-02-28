@@ -89,6 +89,10 @@ class CSVDecodeError(ApplicationError):
     detail = "Cannot decode provided CSV file"
 
 
+class BrokerUnavailableError(ApplicationError):
+    detail = "Message broker is unavailable"
+
+
 class MissingCSVHeadersError(ApplicationError):
     detail = "Missing CSV headers"
 
@@ -98,6 +102,10 @@ class MissingCSVHeadersError(ApplicationError):
                 map(repr, detail)
             )
         super().__init__(self.detail)
+
+
+class MissingDatasetClassesError(MissingCSVHeadersError):
+    detail = "Missing dataset classes"
 
 
 class ApplicationHTTPError(HTTPException):
@@ -227,3 +235,8 @@ class CSVDecodeHTTPError(ApplicationHTTPError):
 class MissingCSVHeadersHTTPError(ApplicationHTTPError):
     detail = "Missing CSV headers"
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class BrokerUnavailableHTTPError(ApplicationHTTPError):
+    detail = "Message broker is unavailable"
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE

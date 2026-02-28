@@ -1,5 +1,7 @@
+from pathlib import Path
 from typing import Any
 
+from config import settings
 from src.ml.prediction import ModelPredictor
 from src.ml.schemas import (
     PredictionInput,
@@ -10,21 +12,34 @@ from src.ml.schemas import (
 from src.ml.training import ModelTrainer
 
 
+
 class NewsClassifierService:
     def __init__(
         self,
-        model_dir: str = "artifacts",
-        device: str = "auto",
+        model_dir: str,
+        device: str,
         autoload_model: bool = True,
     ):
         self.trainer = ModelTrainer(
-            model_dir=model_dir, device=device
+            model_dir=model_dir,
+            device=device,
         )
         self.predictor = ModelPredictor(
             model_dir=model_dir,
             device=device,
             autoload=autoload_model,
         )
+
+    @staticmethod
+    def model_exists() -> bool:
+        model_dir = Path(settings.model_dir)
+        required = (
+            "model.pt",
+            "vocab.json",
+            "labels.json",
+            "config.json",
+        )
+        return all((model_dir / name).exists() for name in required)
 
     def train(
         self,

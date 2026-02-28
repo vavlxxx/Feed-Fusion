@@ -3,6 +3,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
 
+from src.ml.io_utils import load_samples_from_csv
+from src.ml.service import NewsClassifierService
+from src.tasks.ml import retrain_model
+
 sys.path.append(str(Path(__file__).parent.parent))
 
 import uvicorn
@@ -10,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, ORJSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
 from fastapi_cache.backends.redis import RedisBackend
 
 from src.api import router as main_router
@@ -30,14 +35,20 @@ from src.utils.redis_manager import redis_manager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     logger = get_logger("src")
 
-    await redis_manager.connect()
-    logger.info("Successfully connected to Redis!")
+    if settings.USE_REDIS_CACHE:
+        await redis_manager.connect()
+        logger.info("Successfully connected to Redis!")
 
-    FastAPICache.init(
-        RedisBackend(redis_manager.redis),
-        prefix="fastapi-cache",
-    )
-    logger.info("FastAPI Cache has been initialized!")
+        FastAPICache.init(
+            RedisBackend(redis_manager.redis),
+            prefix="fastapi-cache",
+        )
+        logger.info("FastAPI Cache has been initialized!")
+    else:
+        FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+        logger.info(
+            "Redis cache disabled: using in-memory cache backend."
+        )
 
     await DBHealthChecker(engine=engine).check()
     async with DBManager(session_factory=sessionmaker) as db:
@@ -55,14 +66,44 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
             await db.rollback()
             logger.info("Admin user already exists, skipping...")
 
-    async with ESManager(index_name=settings.ES_INDEX_NAME) as es:
-        await es.connection_is_stable()
-        logger.info("Successfully connected to Elasticsearch!")
-        if settings.ES_RESET_INDEX:
-            await es.delete_index(index_name=settings.ES_INDEX_NAME)
+        if settings.ENABLE_ML_AUTOCATEGORIZATION:
             logger.info(
-                "Deleted old index: %s", settings.ES_INDEX_NAME
+                "Checking classification model directory..."
             )
+            model_exists = (
+                NewsClassifierService.model_exists()
+            )
+            if not model_exists:
+                logger.info("Model is not exists...")
+                logger.info("Starting dataset uploading...")
+                samples = load_samples_from_csv(
+                    settings.TRAIN_DATASET_LOCATION
+                )
+                await db.denorm_news.delete_all()
+                await db.denorm_news.add_bulk(samples)
+                await db.commit()
+                logger.info("Successfully uploaded dataset...")
+
+                logger.info("Initiating ML model retraining...")
+                retrain_model.delay()  # pyright: ignore
+
+    if settings.USE_ELASTICSEARCH:
+        async with ESManager(
+            index_name=settings.ES_INDEX_NAME
+        ) as es:
+            await es.connection_is_stable()
+            logger.info("Successfully connected to Elasticsearch!")
+            if settings.ES_RESET_INDEX:
+                await es.delete_index(
+                    index_name=settings.ES_INDEX_NAME
+                )
+                logger.info(
+                    "Deleted old index: %s", settings.ES_INDEX_NAME
+                )
+    else:
+        logger.info(
+            "Elasticsearch disabled: using PostgreSQL fallback for news queries."
+        )
 
     if settings.MODE == "PROD":
         await bot.send_message(
@@ -74,8 +115,9 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("All checks passed!")
     yield
 
-    await redis_manager.close()
-    logger.info("Connection to Redis has been closed")
+    if settings.USE_REDIS_CACHE:
+        await redis_manager.close()
+        logger.info("Connection to Redis has been closed")
 
     logger.info("Shutting down...")
 

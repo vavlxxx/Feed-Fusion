@@ -2,8 +2,9 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
-from src.ml.schemas import TrainConfig
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from src.ml.schemas import TrainConfig
 
 BASE_DIR = Path(__file__).parent.parent
 
@@ -14,6 +15,8 @@ class Settings(BaseSettings):
     EMPTY_TEXT: str = "Отсутствует"
     TIMEZONE: int = +5
     PREFERRED_HOURS_PERIOD: int = 24
+    PARSER_MAX_ENTRIES_PER_FEED: int = 120
+    PARSER_FEED_TIMEOUT_SEC: float = 10.0
 
     @property
     def model_dir(self) -> str:
@@ -21,6 +24,10 @@ class Settings(BaseSettings):
 
     DEVICE: Literal["cpu", "gpu", "auto"] = "cpu"
     TRAIN_CONFIG: TrainConfig = TrainConfig()
+    ENABLE_ML_AUTOCATEGORIZATION: bool = True
+    TRAIN_DATASET_LOCATION: str = str(
+        BASE_DIR / "src" / "data" / "dataset.csv"
+    )
 
     ADMIN_USERNAME: str
     ADMIN_PASSWORD: str
@@ -67,6 +74,7 @@ class Settings(BaseSettings):
 
     REDIS_HOST: str
     REDIS_PORT: int
+    USE_REDIS_CACHE: bool = False
 
     @property
     def redis_url(self):
@@ -77,6 +85,7 @@ class Settings(BaseSettings):
     RABBIT_HOST: str
     RABBIT_PORT: int
     TELEGRAM_NEWS_QUEUE: str
+    ENABLE_SUBS_CHECK: bool = False
 
     @property
     def rabbit_url(self):
@@ -87,6 +96,7 @@ class Settings(BaseSettings):
     ES_PORT: int
     ES_INDEX_NAME: str = "news"
     ES_RESET_INDEX: bool = False
+    USE_ELASTICSEARCH: bool = False
 
     @property
     def get_elasticsearch_url(self):
