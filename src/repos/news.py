@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from asyncpg import DataError
-from sqlalchemy import func, insert, or_, select
+from sqlalchemy import func, insert, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError
 
@@ -44,6 +44,52 @@ class DenormNewsRepo(
         return [
             self.mapper.map_to_domain_entity(obj) for obj in objs
         ]
+
+    async def get_random_used_samples(
+        self, limit: int
+    ) -> list[DenormalizedNewsDTO]:
+        if limit <= 0:
+            return []
+
+        query = (
+            select(self.model)
+            .filter_by(used_in_training=True)
+            .order_by(func.random())
+            .limit(limit)
+        )
+        try:
+            result = await self.session.execute(query)
+        except DBAPIError as exc:
+            if isinstance(exc.orig.__cause__, DataError):  # type: ignore
+                raise ValueOutOfRangeError(
+                    detail=exc.orig.__cause__.args[0]  # type: ignore
+                ) from exc
+            raise exc
+
+        return [
+            self.mapper.map_to_domain_entity(obj)
+            for obj in result.scalars().all()
+        ]
+
+    async def mark_used_in_training(self, ids: list[int]) -> int:
+        if not ids:
+            return 0
+
+        query = (
+            update(self.model)
+            .where(self.model.id.in_(ids))
+            .values(used_in_training=True)
+        )
+        try:
+            result = await self.session.execute(query)
+        except DBAPIError as exc:
+            if isinstance(exc.orig.__cause__, DataError):  # type: ignore
+                raise ValueOutOfRangeError(
+                    detail=exc.orig.__cause__.args[0]  # type: ignore
+                ) from exc
+            raise exc
+
+        return int(getattr(result, "rowcount", 0) or 0)
 
 
 class NewsRepo(BaseRepo[News, NewsDTO]):
