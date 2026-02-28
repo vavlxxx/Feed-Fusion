@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     TRAIN_DATASET_LOCATION: str = str(
         BASE_DIR / "src" / "data" / "dataset.csv"
     )
+    ML_MIN_NEW_SAMPLES_FOR_TRAIN: int = 50
+    ML_REPLAY_RATIO: float = 0.3
+    ML_MAX_REPLAY_SAMPLES: int = 500
 
     ADMIN_USERNAME: str
     ADMIN_PASSWORD: str

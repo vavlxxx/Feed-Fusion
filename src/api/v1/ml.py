@@ -5,6 +5,8 @@ from src.schemas.ml import TrainConfig, TrainingDTO
 from src.services.training import TrainingService
 from src.api.v1.dependencies.db import DBDep
 from src.utils.exceptions import (
+    BrokerUnavailableError,
+    BrokerUnavailableHTTPError,
     ModelAlreadyTrainingError,
     ModelAlreadyTrainingHTTPError,
     ValueOutOfRangeError,
@@ -31,6 +33,8 @@ async def make_manual_train(
         training: TrainingDTO = await TrainingService(
             db
         ).train_model(config)
+    except BrokerUnavailableError as exc:
+        raise BrokerUnavailableHTTPError from exc
     except ModelAlreadyTrainingError as exc:
         raise ModelAlreadyTrainingHTTPError from exc
     return {
