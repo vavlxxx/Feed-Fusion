@@ -30,7 +30,9 @@
         <a class="nav-link" href="#/channels">Каналы</a>
         <a class="nav-link auth-only" href="#/subscriptions">Подписки</a>
         <a class="nav-link auth-only" href="#/profile">Профиль</a>
-        <a class="nav-link admin-only" href="#/admin">Админ</a>
+        <a class="nav-link admin-only" href="#/admin-channels">Упр. каналами</a>
+        <a class="nav-link admin-only" href="#/admin-samples">Импорт данных</a>
+        <a class="nav-link admin-only" href="#/admin-training">Обучение ML</a>
       </nav>
       <div class="header-actions">
         <button class="btn ghost" id="loginBtn">Войти</button>
@@ -85,6 +87,7 @@
 
         <div class="chips chips-below">
           <span class="chip" id="activeFilter">Все каналы</span>
+          <span class="chip" id="activeCategories">Все категории</span>
           <span class="chip" id="activeSort">Сначала новые</span>
         </div>
 
@@ -114,6 +117,15 @@
                 <option value="true" selected>Сначала новые</option>
                 <option value="false">Сначала старые</option>
               </select>
+            </label>
+            <label class="field">
+              <span>Категории</span>
+              <div class="channel-select" id="categorySelect">
+                <button class="channel-toggle" id="categoryToggle" type="button">
+                  Все категории
+                </button>
+                <div class="channel-dropdown" id="categoryDropdown" hidden></div>
+              </div>
             </label>
             <div class="filter-actions">
               <button class="btn ghost" id="resetFilters">Сбросить</button>
@@ -180,11 +192,11 @@
         </div>
       </section>
 
-      <section id="admin" class="view" data-view hidden>
+      <section id="admin-channels" class="view" data-view hidden>
         <div class="section-head">
           <div>
-            <h2>Администрирование</h2>
-            <p class="muted">Управление RSS-каналами доступно только администраторам.</p>
+            <h2>Управление каналами</h2>
+            <p class="muted">Добавление, редактирование и удаление RSS-источников.</p>
           </div>
         </div>
         <div class="admin-layout">
@@ -207,6 +219,111 @@
           <div class="panel admin-list">
             <h3>Список каналов</h3>
             <div id="adminChannelList" class="stack"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="admin-samples" class="view" data-view hidden>
+        <div class="section-head">
+          <div>
+            <h2>Импорт и разметка данных</h2>
+            <p class="muted">Загрузка CSV и ручное пополнение обучающей выборки.</p>
+          </div>
+        </div>
+        <div class="admin-layout admin-ml-layout">
+          <form class="panel form-card" id="sampleUploadForm">
+            <h3>Импорт данных для обучения</h3>
+            <p class="muted">
+              Загрузите CSV с полями: <code>title</code>, <code>summary</code>, <code>category</code>.
+            </p>
+            <label class="field">
+              <span>CSV-файл</span>
+              <input type="file" id="sampleCsvFile" name="file" accept=".csv,text/csv" required />
+            </label>
+            <button class="btn accent" type="submit">Загрузить датасет</button>
+            <button class="btn ghost" type="button" id="refreshUploadsBtn">
+              Обновить статусы импортов
+            </button>
+            <div id="uploadsList" class="stack compact-stack"></div>
+          </form>
+
+          <form class="panel form-card" id="sampleLabelForm">
+            <h3>Добавить размеченный пример</h3>
+            <p class="muted">
+              Укажите ID новости и нужную категорию для пополнения обучающей выборки.
+            </p>
+            <label class="field">
+              <span>ID новости</span>
+              <input type="number" id="sampleNewsId" min="1" required />
+            </label>
+            <label class="field">
+              <span>Категория</span>
+              <select id="sampleCategorySelect" required></select>
+            </label>
+            <button class="btn accent" type="submit">Добавить в выборку</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="admin-training" class="view" data-view hidden>
+        <div class="section-head">
+          <div>
+            <h2>Обучение ML модели</h2>
+            <p class="muted">Ручной запуск обучения и мониторинг метрик.</p>
+          </div>
+        </div>
+        <div class="admin-layout admin-ml-layout">
+          <div class="panel form-card">
+            <h3>Параметры обучения</h3>
+            <form id="trainModelForm" class="inline-form">
+              <div class="two-col-grid">
+                <label class="field">
+                  <span>epochs</span>
+                  <input type="number" name="epochs" min="1" value="10" />
+                </label>
+                <label class="field">
+                  <span>batch_size</span>
+                  <input type="number" name="batch_size" min="1" value="64" />
+                </label>
+                <label class="field">
+                  <span>lr</span>
+                  <input type="number" name="lr" step="0.0001" min="0" value="0.001" />
+                </label>
+                <label class="field">
+                  <span>val_split</span>
+                  <input type="number" name="val_split" step="0.01" min="0" max="0.9" value="0.1" />
+                </label>
+                <label class="field">
+                  <span>embed_dim</span>
+                  <input type="number" name="embed_dim" min="8" value="128" />
+                </label>
+                <label class="field">
+                  <span>dropout</span>
+                  <input type="number" name="dropout" step="0.01" min="0" max="1" value="0.2" />
+                </label>
+              </div>
+              <label class="field checkbox-field">
+                <input type="checkbox" name="balance" />
+                <span>Балансировать классы</span>
+              </label>
+              <div class="actions">
+                <button class="btn accent" type="submit">Запустить обучение</button>
+                <button class="btn ghost" type="button" id="refreshTrainingsBtn">
+                  Обновить статусы обучений
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel form-card">
+            <h3>История обучений</h3>
+            <div id="trainingsList" class="stack compact-stack"></div>
+          </div>
+
+          <div class="panel form-card">
+            <h3>График прогресса</h3>
+            <canvas id="trainingChart" width="640" height="260" aria-label="График обучения модели"></canvas>
+            <p class="muted" id="trainingChartInfo">Выберите обучение для отображения метрик.</p>
           </div>
         </div>
       </section>
