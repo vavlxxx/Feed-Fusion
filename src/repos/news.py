@@ -16,7 +16,7 @@ from src.schemas.news import (
     AddNewsDTO,
     NewsDTO,
 )
-from schemas.samples import DenormalizedNewsDTO, DatasetUploadDTO
+from src.schemas.samples import DenormalizedNewsDTO, DatasetUploadDTO
 from src.utils.exceptions import ValueOutOfRangeError
 
 
