@@ -94,25 +94,35 @@ class BaseRepo(Generic[ModelType, SchemaType]):
         return self.mapper.map_to_domain_entity(obj)
 
     async def add_bulk(
-        self, data: Sequence[BaseDTO]
+        self,
+        data: Sequence[BaseDTO],
+        chunk_size: int = 1000,
     ) -> list[SchemaType]:
-        add_obj_stmt = (
-            insert(self.model)
-            .values([item.model_dump() for item in data])
-            .returning(self.model)
-        )
-        try:
-            result = await self.session.execute(add_obj_stmt)
-        except IntegrityError as exc:
-            if exc.orig and isinstance(
-                exc.orig.__cause__, UniqueViolationError
-            ):
-                raise ObjectExistsError from exc
-            raise exc
-        objs = result.scalars().all()
-        return [
-            self.mapper.map_to_domain_entity(item) for item in objs
-        ]
+        result_: list[SchemaType] = []
+        for idx in range(0, len(data), chunk_size):
+            chunk = data[idx : idx + chunk_size]
+            add_obj_stmt = (
+                insert(self.model)
+                .values([item.model_dump() for item in chunk])
+                .returning(self.model)
+            )
+
+            try:
+                result = await self.session.execute(add_obj_stmt)
+            except IntegrityError as exc:
+                if exc.orig and isinstance(
+                    exc.orig.__cause__, UniqueViolationError
+                ):
+                    raise ObjectExistsError from exc
+                raise exc
+            objs = result.scalars().all()
+            result_.extend(
+                [
+                    self.mapper.map_to_domain_entity(item)
+                    for item in objs
+                ]
+            )
+        return result_
 
     async def add(self, data: BaseDTO, **params) -> SchemaType:
         add_obj_stmt = (

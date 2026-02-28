@@ -13,8 +13,8 @@ from src.repos.auth import AuthRepo, TokenRepo
 from src.repos.news import (
     NewsRepo,
     DenormNewsRepo,
-    DatasetUploadRepo,
 )
+from src.repos.ml import DatasetUploadRepo, TrainingRepo
 from src.repos.channels import ChannelRepo
 from src.models.base import Base
 from src.utils.exceptions import MissingTablesError
@@ -33,6 +33,7 @@ class DBManager:
         self.news = NewsRepo(self.session)
         self.uploads = DatasetUploadRepo(self.session)
         self.denorm_news = DenormNewsRepo(self.session)
+        self.trains = TrainingRepo(self.session)
         self.auth = AuthRepo(self.session)
         self.tokens = TokenRepo(self.session)
         self.subs = SubsRepo(self.session)
@@ -54,7 +55,7 @@ class DBHealthChecker:
         self.engine = engine
 
     async def check(self):
-        async with self.engine.begin() as conn:
+        async with self.engine.begin() as conn: # type: ignore
             is_exists, missing = await conn.run_sync(
                 self._check_tables_existence
             )

@@ -23,8 +23,13 @@ class DenormalizedNewsAddDTO(BaseDTO):
                 raise ValueError("unknown category: %s" % value)
 
 
+class DenormalizedNewsUpdateDTO(BaseDTO):
+    used_in_training: bool | None = None
+
+
 class DenormalizedNewsDTO(DenormalizedNewsAddDTO):
     id: int
+    used_in_training: bool
     created_at: datetime
     updated_at: datetime
 

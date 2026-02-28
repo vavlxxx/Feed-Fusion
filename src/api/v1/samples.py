@@ -26,7 +26,9 @@ from src.utils.exceptions import (
     UploadNotFoundHTTPError,
 )
 
-router = APIRouter(prefix="/samples", tags=["Новости"])
+router = APIRouter(
+    prefix="/samples", tags=["Данные для обучения модели"]
+)
 
 
 @router.get(
@@ -89,7 +91,7 @@ async def upload_denormalized_news(
         status_code=status.HTTP_202_ACCEPTED,
         content={
             "upload_id": upload.id,
-            "link": f"/api/v1/uploads/{upload.id}"
+            "link": f"/api/v1/uploads/{upload.id}",
         },
     )
 

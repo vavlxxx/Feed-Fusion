@@ -47,15 +47,16 @@ beat_schedule = {
         "task": "parse_rss",
         "schedule": crontab(minute="*/10"),
     },
-    "retrain_model": {
-        "task": "retrain_model",
-        "schedule": crontab(minute=0, hour=0),
-    },
 }
 if settings.ENABLE_SUBS_CHECK:
     beat_schedule["check_subs"] = {
         "task": "check_subs",
         "schedule": crontab(minute="*/3"),
+    }
+if settings.ENABLE_ML_AUTOTRAIN:
+    beat_schedule["retrain_model"] = {
+        "task": "retrain_model",
+        "schedule": crontab(minute=0, hour=0),
     }
 if settings.ENABLE_ML_AUTOCATEGORIZATION:
     beat_schedule["check_for_uncategorized_news"] = {

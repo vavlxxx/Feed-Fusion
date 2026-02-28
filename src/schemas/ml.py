@@ -1,18 +1,21 @@
-from src.schemas.base import BaseModel
+from datetime import datetime
 
-class PredictionInput(BaseModel):
+from src.schemas.base import BaseDTO
+
+
+class PredictionInput(BaseDTO):
     news_id: int
     title: str
     summary: str
 
 
-class TrainingSample(BaseModel):
+class TrainingSample(BaseDTO):
     title: str
     summary: str | None = None
     category: str
 
 
-class TrainConfig(BaseModel):
+class TrainConfig(BaseDTO):
     seed: int = 42
     epochs: int = 10
     batch_size: int = 64
@@ -26,15 +29,43 @@ class TrainConfig(BaseModel):
     balance: bool = False
 
 
-class TopPrediction(BaseModel):
+class TopPrediction(BaseDTO):
     category: str
     confidence: float
 
 
-class PredictionResult(BaseModel):
+class PredictionResult(BaseDTO):
     category: str | None = None
     confidence: float
     top_k: list[TopPrediction]
     raw_category: str | None = None
     reason: str | None = None
     probabilities: dict[str, float] | None = None
+
+
+class TrainingAddDTO(BaseDTO):
+    config: TrainConfig
+    model_dir: str
+    device: str
+
+
+class TrainingDTO(TrainingAddDTO):
+    in_progress: bool
+    id: int
+    details: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TrainingUpdateDTO(BaseDTO):
+    in_progress: bool | None = None
+    metrics: dict | None = None
+    details: str | None = None
+
+
+class TrainingResult(BaseDTO):
+    model_dir: str
+    labels: list[str]
+    metrics: dict
+    config: TrainConfig
+    device: str

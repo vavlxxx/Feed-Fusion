@@ -1,5 +1,3 @@
-from dataclasses import asdict
-
 import torch
 
 from src.ml.io_utils import (
@@ -47,7 +45,7 @@ class ArtifactStore:
         ensure_dir(self.model_dir)
         save_json(vocab.to_dict(), self.vocab_path)
         save_json(labels, self.labels_path)
-        save_json(asdict(config), self.config_path)
+        save_json(config.model_dump(), self.config_path)
         save_json(metrics, self.metrics_path)
 
     def save_model_state(self, model: TextClassifier) -> None:

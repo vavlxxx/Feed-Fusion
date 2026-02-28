@@ -67,14 +67,9 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
             logger.info("Admin user already exists, skipping...")
 
         if settings.ENABLE_ML_AUTOCATEGORIZATION:
-            logger.info(
-                "Checking classification model directory..."
-            )
-            model_exists = (
-                NewsClassifierService.model_exists()
-            )
+            model_exists = NewsClassifierService.model_exists()
             if not model_exists:
-                logger.info("Model is not exists...")
+                logger.info("Classificator model is not exists...")
                 logger.info("Starting dataset uploading...")
                 samples = load_samples_from_csv(
                     settings.TRAIN_DATASET_LOCATION

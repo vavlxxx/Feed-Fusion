@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 from src.config import settings
 from src.ml.prediction import ModelPredictor
@@ -7,7 +6,7 @@ from src.schemas.ml import (
     PredictionInput,
     PredictionResult,
     TrainConfig,
-    TrainingSample,
+    TrainingSample, TrainingResult,
 )
 from src.ml.training import ModelTrainer
 
@@ -48,7 +47,7 @@ class NewsClassifierService:
         resume: bool = False,
         reload_model: bool = True,
         verbose: bool = True,
-    ) -> dict[str, Any]:
+    ) -> TrainingResult:
         result = self.trainer.train(
             samples=samples,
             config=config,

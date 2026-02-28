@@ -5,14 +5,26 @@ import logging
 
 from src.config import settings
 from src.db import sessionmaker_null_pool
-from src.schemas.ml import PredictionInput, TrainingSample
+from src.schemas.ml import (
+    PredictionInput,
+    TrainingSample,
+    TrainingResult,
+    TrainingUpdateDTO,
+    TrainingAddDTO,
+    TrainConfig,
+)
 from src.ml.service import NewsClassifierService
 from src.schemas.news import (
     NewsDTO,
     NewsUpdateDTO,
 )
-from src.schemas.samples import DenormalizedNewsAddDTO, DenormalizedNewsDTO, DatasetUploadUpdateDTO, \
-    DatasetUploadDTO
+from src.schemas.samples import (
+    DenormalizedNewsAddDTO,
+    DenormalizedNewsDTO,
+    DatasetUploadUpdateDTO,
+    DatasetUploadDTO,
+    DenormalizedNewsUpdateDTO,
+)
 from src.schemas.enums import NewsCategory
 from src.tasks.app import celery_app
 from src.utils.db_tools import DBManager
@@ -145,9 +157,9 @@ async def assign_categories(
 ) -> None:
     payloads = [
         PredictionInput(
-            obj.id,
-            obj.title,
-            obj.summary,
+            news_id=obj.id,
+            title=obj.title,
+            summary=obj.summary,
         )
         for obj in news
     ]
@@ -191,19 +203,52 @@ async def assign_categories(
 
 
 @celery_app.task(name="retrain_model")
-def retrain_model():
-    asyncio.run(retrain_model_async())
+def retrain_model(manual: dict | None = None):  # pyright: ignore
+    if manual:
+        manual: TrainConfig = TrainConfig(**manual)
+    asyncio.run(retrain_model_async(manual))
 
 
-async def retrain_model_async():
+async def retrain_model_async(manual: TrainConfig | None = None):
     async with DBManager(sessionmaker_null_pool) as db:
+        training = await db.trains.get_one_or_none(
+            model_dir=settings.model_dir,
+            in_progress=True,
+        )
+        if training and not manual:
+            logger.warning("Model is already training! Skipping...")
+            return
+
+        if not manual:
+            train = TrainingAddDTO(
+                device=settings.DEVICE,
+                model_dir=settings.model_dir,
+                config=settings.TRAIN_CONFIG
+                if not manual
+                else manual,
+            )
+            await db.trains.add(train)
+            await db.commit()
+
         dataset: list[
             DenormalizedNewsDTO
-        ] = await db.denorm_news.get_all()
+        ] = await db.denorm_news.get_all_filtered(
+            used_in_training=False
+        )
         if len(dataset) == 0:
             logger.info(
-                "There are no samples to train model. Skipping..."
+                "There are no samples to train the model. Skipping..."
             )
+            obj = TrainingUpdateDTO(
+                details="There are no samples to train the model",
+                in_progress=False,
+            )
+            await db.trains.edit(
+                obj,
+                model_dir=settings.model_dir,
+                in_progress=True,
+            )
+            await db.commit()
             return
 
         logger.info(
@@ -219,14 +264,31 @@ async def retrain_model_async():
                 device=settings.DEVICE,
                 autoload_model=model_exists,
             )
-            logger.info("Successfully loaded model...")
+            logger.info("Successfully loaded model service...")
         except Exception as exc:
-            logger.error("Failed to load model: %s", exc)
+            logger.error("Failed to load model service: %s", exc)
+            obj = TrainingUpdateDTO(
+                details=f"Failed to load model service, {str(exc)}",
+                in_progress=False,
+            )
+            await db.trains.edit(
+                obj,
+                model_dir=settings.model_dir,
+                in_progress=True,
+            )
+            await db.commit()
             return
 
-        await db.denorm_news.delete_all()
+        samples_to_update = DenormalizedNewsUpdateDTO(
+            used_in_training=True,
+        )
+        await db.denorm_news.edit(
+            data=samples_to_update,
+            ensure_existence=False,
+        )
+
         logger.info(
-            "Successfully deleted %d samples...",
+            "Successfully used in training %d samples...",
             len(dataset),
         )
 
@@ -239,9 +301,19 @@ async def retrain_model_async():
             for row in dataset
         ]
 
-        service.train(
+        result: TrainingResult = service.train(
             samples=dataset_,
             config=settings.TRAIN_CONFIG,
         )
+        obj = TrainingUpdateDTO(
+            metrics=result.metrics,
+            in_progress=False,
+        )
+        await db.trains.edit(
+            obj,
+            model_dir=settings.model_dir,
+            in_progress=True,
+        )
+
         logger.info("Successfully trained model...")
         await db.commit()
