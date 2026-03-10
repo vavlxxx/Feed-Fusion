@@ -120,7 +120,7 @@ class ApplicationHTTPError(HTTPException):
     detail = "Something went wrong"
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
 
-    def __init__(self, detail: str | None = None):
+    def __init__(self, *args, detail: str | None = None, **kwargs):
         if detail is not None:
             self.detail = detail
         super().__init__(
@@ -129,7 +129,7 @@ class ApplicationHTTPError(HTTPException):
 
 
 class ValueOutOfRangeHTTPError(ApplicationHTTPError):
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -163,7 +163,7 @@ class EmptyChannelHTTPError(ApplicationHTTPError):
 
 class MisingTelegramErrorHTTPError(ApplicationHTTPError):
     detail = "Missing telegram id"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class NewsNotFoundHTTPError(ApplicationHTTPError):
@@ -193,7 +193,7 @@ class ExpiredSignatureHTTPError(ApplicationHTTPError):
 
 class InvalidTokenTypeHTTPError(ApplicationHTTPError):
     detail = "Invalid token type, expected {}, got {}"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
 
     def __init__(self, *args, expected_type, actual_type, **kwargs):
         self.detail = self.detail.format(expected_type, actual_type)
@@ -207,7 +207,7 @@ class WithdrawnTokenHTTPError(ApplicationHTTPError):
 
 class MissingSubjectHTTPError(ApplicationHTTPError):
     detail = "Missing token subject field"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class MissingTokenHTTPError(ApplicationHTTPError):
@@ -237,12 +237,12 @@ class InvalidLoginDataHTTPError(ApplicationHTTPError):
 
 class CSVDecodeHTTPError(ApplicationHTTPError):
     detail = "Cannot decode provided CSV file"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class MissingCSVHeadersHTTPError(ApplicationHTTPError):
     detail = "Missing CSV headers"
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 class BrokerUnavailableHTTPError(ApplicationHTTPError):

@@ -54,7 +54,7 @@ NEWS_RESPONSES: Dict[int | str, Dict[str, Any]] | None = {
             }
         },
     },
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {
+    status.HTTP_422_UNPROCESSABLE_CONTENT: {
         "description": "Ошибка валидации",
         "content": {
             "application/json": {
