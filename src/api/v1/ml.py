@@ -1,17 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, status
+from fastapi.responses import ORJSONResponse
 
 from src.api.v1.dependencies.auth import AdminAllowedDep
+from src.api.v1.dependencies.db import DBDep
 from src.schemas.ml import TrainConfig, TrainingDTO
 from src.services.training import TrainingService
-from src.api.v1.dependencies.db import DBDep
 from src.utils.exceptions import (
     BrokerUnavailableError,
     BrokerUnavailableHTTPError,
     ModelAlreadyTrainingError,
     ModelAlreadyTrainingHTTPError,
-    ValueOutOfRangeError,
     TrainingNotFoundError,
     TrainingNotFoundHTTPError,
+    ValueOutOfRangeError,
     ValueOutOfRangeHTTPError,
 )
 
@@ -37,10 +38,13 @@ async def make_manual_train(
         raise BrokerUnavailableHTTPError from exc
     except ModelAlreadyTrainingError as exc:
         raise ModelAlreadyTrainingHTTPError from exc
-    return {
-        "training_id": training.id,
-        "link": f"/api/v1/trainings/{training.id}",
-    }
+    return ORJSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "training_id": training.id,
+            "link": f"/api/v1/trainings/{training.id}",
+        },
+    )
 
 
 @router.get(

@@ -3,10 +3,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
 
-from src.ml.io_utils import load_samples_from_csv
-from src.ml.service import NewsClassifierService
-from src.tasks.ml import retrain_model
-
 sys.path.append(str(Path(__file__).parent.parent))
 
 import uvicorn
@@ -22,8 +18,11 @@ from src.api.docs import router as docs_router
 from src.bot.bot import bot
 from src.config import settings
 from src.db import engine, sessionmaker
+from src.ml.io_utils import load_samples_from_csv
+from src.ml.service import NewsClassifierService
 from src.schemas.auth import UserRegisterDTO
 from src.services.auth import AuthService
+from src.tasks.ml import retrain_model
 from src.utils.db_tools import DBHealthChecker, DBManager
 from src.utils.es_manager import ESManager
 from src.utils.exceptions import UserExistsError
