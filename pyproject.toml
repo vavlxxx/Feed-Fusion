@@ -50,6 +50,12 @@ line-length = 68
 [tool.poetry]
 package-mode = false
 
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+reportDeprecated = "warning"
+#typeCheckingMode = "strict"
+
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
 ruff = "^0.13.0"
