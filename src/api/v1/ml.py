@@ -29,7 +29,7 @@ async def make_manual_train(
     db: DBDep,
     config: TrainConfig,
     _: AdminAllowedDep,
-) -> dict:
+) -> ORJSONResponse:
     try:
         training: TrainingDTO = await TrainingService(
             db

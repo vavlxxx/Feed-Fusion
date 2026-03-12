@@ -1,5 +1,13 @@
 ﻿const API_BASE = "/api/v1";
 const PLACEHOLDER_IMAGE = "https://placehold.co/600x400";
+const API_ENDPOINTS = {
+  auth: "/auth/",
+  channels: "/channels/",
+  news: "/news/",
+  subscriptions: "/subscriptions/",
+  uploads: "/samples/",
+  trainings: "/trainings/",
+};
 const ACCESS_TOKEN_KEY = "ff_access_token";
 const NEWS_CATEGORIES = [
   { value: "Международные отношения", label: "Мир" },
@@ -81,8 +89,25 @@ const dom = {
   trainModelForm: document.getElementById("trainModelForm"),
   refreshTrainingsBtn: document.getElementById("refreshTrainingsBtn"),
   trainingsList: document.getElementById("trainingsList"),
+  adminStatChannels: document.getElementById("adminStatChannels"),
+  adminStatUploads: document.getElementById("adminStatUploads"),
+  adminStatTrainings: document.getElementById("adminStatTrainings"),
+  adminStatActiveTrainings: document.getElementById("adminStatActiveTrainings"),
+  adminStatBestAccuracy: document.getElementById("adminStatBestAccuracy"),
+  uploadChart: document.getElementById("uploadChart"),
+  uploadChartInfo: document.getElementById("uploadChartInfo"),
   trainingChart: document.getElementById("trainingChart"),
   trainingChartInfo: document.getElementById("trainingChartInfo"),
+  trainingLossChart: document.getElementById("trainingLossChart"),
+  trainingLossInfo: document.getElementById("trainingLossInfo"),
+  trainingHistoryChart: document.getElementById("trainingHistoryChart"),
+  trainingHistoryInfo: document.getElementById("trainingHistoryInfo"),
+  trainingSnapshotTitle: document.getElementById("trainingSnapshotTitle"),
+  trainingSnapshotState: document.getElementById("trainingSnapshotState"),
+  trainingSnapshotMeta: document.getElementById("trainingSnapshotMeta"),
+  trainingDetails: document.getElementById("trainingDetails"),
+  trainingConfig: document.getElementById("trainingConfig"),
+  trainingDetailsText: document.getElementById("trainingDetailsText"),
   toast: document.getElementById("toast"),
 };
 
@@ -152,7 +177,11 @@ async function parseError(response) {
 
 async function refreshTokens() {
   try {
-    const response = await apiFetch("/auth/refresh/", { method: "GET", skipAuth: true, retry: true });
+    const response = await apiFetch(API_ENDPOINTS.auth + "refresh/", {
+      method: "GET",
+      skipAuth: true,
+      retry: true,
+    });
     if (!response.ok) return false;
     const data = await response.json();
     if (data?.access_token) {
@@ -168,7 +197,7 @@ async function refreshTokens() {
 async function fetchProfile() {
   if (!state.accessToken) return false;
   try {
-    const profile = await requestJson("/auth/profile/");
+    const profile = await requestJson(API_ENDPOINTS.auth + "profile/");
     setUser(profile);
     return true;
   } catch (_) {
@@ -192,6 +221,7 @@ function setUser(user) {
   renderAdminChannels();
   renderUploads();
   renderTrainings();
+  renderAdminSummary();
 }
 
 function updateAuthUI() {
@@ -228,7 +258,7 @@ function showView(route) {
 }
 
 function requireAuth(route) {
-  const adminRoutes = ["admin-channels", "admin-samples", "admin-training"];
+  const adminRoutes = ["admin", "admin-channels", "admin-samples", "admin-training"];
   if (!state.user) {
     showToast("Нужна авторизация, чтобы продолжить.");
     location.hash = "#/auth";
@@ -258,6 +288,126 @@ function formatDate(value) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function formatNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "0";
+  return new Intl.NumberFormat("ru-RU").format(number);
+}
+
+function formatPercent(value, digits = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "n/a";
+  return `${(number * 100).toFixed(digits)}%`;
+}
+
+function formatScalar(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Да" : "Нет";
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) return String(value);
+    return value.toFixed(value < 1 ? 4 : 2).replace(/0+$/, "").replace(/\.$/, "");
+  }
+  return String(value);
+}
+
+function getMetricRows(metrics, key) {
+  if (!metrics || typeof metrics !== "object") return [];
+  return Array.isArray(metrics[key]) ? metrics[key] : [];
+}
+
+function toMetricSeries(rows, field) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map((row, index) => ({
+      x: Number(row?.epoch ?? row?.step ?? index + 1),
+      y: Number(row?.[field]),
+    }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+}
+
+function getLastMetricPoint(metrics, key) {
+  const rows = getMetricRows(metrics, key);
+  return rows.length > 0 ? rows[rows.length - 1] : null;
+}
+
+function getBestMetricValue(metrics, key, field) {
+  const rows = getMetricRows(metrics, key);
+  const values = rows
+    .map((row) => Number(row?.[field]))
+    .filter((value) => Number.isFinite(value));
+  if (values.length === 0) return null;
+  return Math.max(...values);
+}
+
+function getTrainingBestAccuracy(training) {
+  const valBest = getBestMetricValue(training?.metrics, "val", "accuracy");
+  if (Number.isFinite(valBest)) return valBest;
+  return getBestMetricValue(training?.metrics, "train", "accuracy");
+}
+
+function setStatusBadge(node, text, variant = "idle") {
+  if (!node) return;
+  node.textContent = text;
+  node.classList.remove("is-live", "is-idle", "is-warn");
+  node.classList.add(`is-${variant}`);
+}
+
+function renderDetailCards(container, items, emptyMessage) {
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!items || items.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = emptyMessage;
+    container.appendChild(empty);
+    return;
+  }
+
+  items.forEach(([label, value]) => {
+    const card = document.createElement("div");
+    card.className = "detail-card";
+
+    const title = document.createElement("span");
+    title.textContent = label;
+
+    const content = document.createElement("strong");
+    content.textContent = value;
+
+    card.appendChild(title);
+    card.appendChild(content);
+    container.appendChild(card);
+  });
+}
+
+function renderConfigChips(config) {
+  if (!dom.trainingConfig) return;
+  dom.trainingConfig.innerHTML = "";
+
+  if (!config || typeof config !== "object" || Object.keys(config).length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "Конфиг обучения пока недоступен.";
+    dom.trainingConfig.appendChild(empty);
+    return;
+  }
+
+  Object.entries(config).forEach(([key, value]) => {
+    const chip = document.createElement("div");
+    chip.className = "config-chip";
+
+    const label = document.createElement("span");
+    label.textContent = key;
+
+    const content = document.createElement("strong");
+    content.textContent = formatScalar(value);
+
+    chip.appendChild(label);
+    chip.appendChild(content);
+    dom.trainingConfig.appendChild(chip);
+  });
 }
 
 function getCategoryLabel(value) {
@@ -340,38 +490,43 @@ function isClickInsideCategorySelect(event) {
   return dom.categorySelect.contains(event.target);
 }
 
-function clearTrainingChart(message = "Выберите обучение для отображения метрик.") {
-  if (!dom.trainingChart || !dom.trainingChartInfo) return;
-  const ctx = dom.trainingChart.getContext("2d");
+function clearCanvasChart(canvas, infoNode, message = "Нет данных для графика") {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const width = dom.trainingChart.width;
-  const height = dom.trainingChart.height;
+  const width = canvas.width;
+  const height = canvas.height;
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "#f7fbfa";
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = "#6f5c84";
+  ctx.fillStyle = "#5f7572";
   ctx.font = '14px "Golos Text", sans-serif';
   ctx.textAlign = "center";
   ctx.fillText("Нет данных для графика", width / 2, height / 2);
-  dom.trainingChartInfo.textContent = message;
+  if (infoNode) {
+    infoNode.textContent = message;
+  }
 }
 
-function toAccuracySeries(rows) {
-  if (!Array.isArray(rows)) return [];
-  return rows
-    .map((row, index) => ({
-      x: Number(row?.epoch ?? row?.step ?? index + 1),
-      y: Number(row?.accuracy),
-    }))
-    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+function clearTrainingChart(message = "Выберите обучение для отображения метрик.") {
+  clearCanvasChart(dom.trainingChart, dom.trainingChartInfo, message);
 }
 
-function drawLine(ctx, points, color, radius = 3) {
+function drawChartLegend(ctx, x, y, color, label) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y - 8, 12, 12);
+  ctx.fillStyle = "#173230";
+  ctx.font = '12px "Golos Text", sans-serif';
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 18, y + 2);
+}
+
+function drawChartSeries(ctx, points, color) {
   if (points.length === 0) return;
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.25;
   ctx.beginPath();
   points.forEach((point, index) => {
     if (index === 0) {
@@ -384,59 +539,76 @@ function drawLine(ctx, points, color, radius = 3) {
 
   points.forEach((point) => {
     ctx.beginPath();
-    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
     ctx.fill();
   });
 }
 
-function drawLegend(ctx, x, y, color, label) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y - 9, 12, 12);
-  ctx.fillStyle = "#4c1d95";
-  ctx.font = '12px "Golos Text", sans-serif';
-  ctx.textAlign = "left";
-  ctx.fillText(label, x + 18, y);
-}
-
-function renderTrainingChart(training) {
-  if (!dom.trainingChart || !dom.trainingChartInfo) return;
-  const ctx = dom.trainingChart.getContext("2d");
+function renderLineChart({
+  canvas,
+  infoNode,
+  series,
+  emptyMessage,
+  infoText,
+  valueFormatter = (value) => value.toFixed(2),
+  fixedMin = null,
+  fixedMax = null,
+}) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const width = dom.trainingChart.width;
-  const height = dom.trainingChart.height;
-  ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, width, height);
+  const normalizedSeries = (series || []).map((item) => ({
+    ...item,
+    points: Array.isArray(item.points) ? item.points : [],
+  }));
+  const allPoints = normalizedSeries.flatMap((item) => item.points);
 
-  if (!training) {
-    clearTrainingChart();
+  if (allPoints.length === 0) {
+    clearCanvasChart(canvas, infoNode, emptyMessage);
     return;
   }
 
-  const trainSeries = toAccuracySeries(training.metrics?.train);
-  const valSeries = toAccuracySeries(training.metrics?.val);
-  const allSeries = [...trainSeries, ...valSeries];
-
-  if (allSeries.length === 0) {
-    clearTrainingChart(`Обучение #${training.id}: метрики пока отсутствуют.`);
-    return;
-  }
-
-  const padding = { left: 42, right: 18, top: 20, bottom: 30 };
+  const width = canvas.width;
+  const height = canvas.height;
+  const padding = { left: 48, right: 18, top: 22, bottom: 34 };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
-  const maxX = Math.max(...allSeries.map((point) => point.x));
-  const minX = Math.min(...allSeries.map((point) => point.x));
+  const minX = Math.min(...allPoints.map((point) => point.x));
+  const maxX = Math.max(...allPoints.map((point) => point.x));
   const xSpan = Math.max(1, maxX - minX);
-  const yMin = 0;
-  const yMax = 1;
-  const ySpan = yMax - yMin;
 
+  let minY = Number.isFinite(fixedMin) ? fixedMin : Math.min(...allPoints.map((point) => point.y));
+  let maxY = Number.isFinite(fixedMax) ? fixedMax : Math.max(...allPoints.map((point) => point.y));
+
+  if (!Number.isFinite(fixedMin) || !Number.isFinite(fixedMax)) {
+    if (minY === maxY) {
+      const fallbackPad = minY === 0 ? 1 : Math.abs(minY) * 0.1;
+      minY -= fallbackPad;
+      maxY += fallbackPad;
+    } else {
+      const pad = (maxY - minY) * 0.08;
+      if (!Number.isFinite(fixedMin)) {
+        minY -= pad;
+      }
+      if (!Number.isFinite(fixedMax)) {
+        maxY += pad;
+      }
+    }
+  }
+
+  if (Number.isFinite(fixedMin)) minY = fixedMin;
+  if (Number.isFinite(fixedMax)) maxY = fixedMax;
+
+  const ySpan = Math.max(0.0001, maxY - minY);
   const toCanvasX = (x) => padding.left + ((x - minX) / xSpan) * plotWidth;
-  const toCanvasY = (y) => padding.top + (1 - (y - yMin) / ySpan) * plotHeight;
+  const toCanvasY = (y) => padding.top + (1 - (y - minY) / ySpan) * plotHeight;
 
-  ctx.strokeStyle = "#e4d8fb";
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#f7fbfa";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = "#d9e8e4";
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i += 1) {
     const y = padding.top + (plotHeight / 4) * i;
@@ -446,46 +618,153 @@ function renderTrainingChart(training) {
     ctx.stroke();
   }
 
-  ctx.strokeStyle = "#b9a5e8";
-  ctx.lineWidth = 1.3;
+  ctx.strokeStyle = "#97b8b2";
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(padding.left, padding.top);
   ctx.lineTo(padding.left, height - padding.bottom);
   ctx.lineTo(width - padding.right, height - padding.bottom);
   ctx.stroke();
 
-  ctx.fillStyle = "#6f5c84";
+  ctx.fillStyle = "#5f7572";
   ctx.font = '11px "Golos Text", sans-serif';
   ctx.textAlign = "right";
   for (let i = 0; i <= 4; i += 1) {
-    const value = (1 - i / 4).toFixed(2);
+    const value = maxY - (ySpan / 4) * i;
     const y = padding.top + (plotHeight / 4) * i + 4;
-    ctx.fillText(value, padding.left - 6, y);
+    ctx.fillText(valueFormatter(value), padding.left - 8, y);
   }
 
   ctx.textAlign = "center";
-  const firstEpoch = Math.round(minX);
-  const lastEpoch = Math.round(maxX);
-  ctx.fillText(String(firstEpoch), padding.left, height - 8);
-  ctx.fillText(String(lastEpoch), width - padding.right, height - 8);
+  const xLabels = Array.from(new Set([minX, Math.round((minX + maxX) / 2), maxX]));
+  xLabels.forEach((label) => {
+    ctx.fillText(String(Math.round(label)), toCanvasX(label), height - 10);
+  });
 
-  const trainPoints = trainSeries.map((point) => ({
-    x: toCanvasX(point.x),
-    y: toCanvasY(point.y),
-  }));
-  const valPoints = valSeries.map((point) => ({
-    x: toCanvasX(point.x),
-    y: toCanvasY(point.y),
-  }));
+  normalizedSeries.forEach((item) => {
+    const points = item.points.map((point) => ({
+      x: toCanvasX(point.x),
+      y: toCanvasY(point.y),
+    }));
+    drawChartSeries(ctx, points, item.color);
+  });
 
-  drawLine(ctx, trainPoints, "#6d28d9");
-  drawLine(ctx, valPoints, "#14b8a6");
+  normalizedSeries.forEach((item, index) => {
+    drawChartLegend(ctx, padding.left + index * 150, padding.top - 4, item.color, item.label);
+  });
 
-  drawLegend(ctx, padding.left + 8, padding.top - 4, "#6d28d9", "Train accuracy");
-  drawLegend(ctx, padding.left + 160, padding.top - 4, "#14b8a6", "Val accuracy");
-  dom.trainingChartInfo.textContent = `Обучение #${training.id}: ${formatTrainingMetrics(
-    training.metrics
-  )}`;
+  if (infoNode) {
+    infoNode.textContent = infoText;
+  }
+}
+
+function renderTrainingChart(training) {
+  if (!training) {
+    clearTrainingChart();
+    return;
+  }
+
+  const trainSeries = toMetricSeries(getMetricRows(training.metrics, "train"), "accuracy");
+  const valSeries = toMetricSeries(getMetricRows(training.metrics, "val"), "accuracy");
+
+  renderLineChart({
+    canvas: dom.trainingChart,
+    infoNode: dom.trainingChartInfo,
+    series: [
+      { label: "Train accuracy", color: "#1f6d63", points: trainSeries },
+      { label: "Val accuracy", color: "#0f4c81", points: valSeries },
+    ],
+    emptyMessage: `Обучение #${training.id}: метрики accuracy пока отсутствуют.`,
+    infoText: `Обучение #${training.id}: ${formatTrainingMetrics(training.metrics)}`,
+    valueFormatter: (value) => formatPercent(value, 0),
+    fixedMin: 0,
+    fixedMax: 1,
+  });
+}
+
+function renderTrainingLossChart(training) {
+  if (!training) {
+    clearCanvasChart(dom.trainingLossChart, dom.trainingLossInfo, "Выберите обучение для отображения loss.");
+    return;
+  }
+
+  const trainSeries = toMetricSeries(getMetricRows(training.metrics, "train"), "loss");
+  const valSeries = toMetricSeries(getMetricRows(training.metrics, "val"), "loss");
+  const lastTrain = getLastMetricPoint(training.metrics, "train");
+  const lastVal = getLastMetricPoint(training.metrics, "val");
+
+  renderLineChart({
+    canvas: dom.trainingLossChart,
+    infoNode: dom.trainingLossInfo,
+    series: [
+      { label: "Train loss", color: "#c96835", points: trainSeries },
+      { label: "Val loss", color: "#9354d0", points: valSeries },
+    ],
+    emptyMessage: `Обучение #${training.id}: метрики loss пока отсутствуют.`,
+    infoText: `Train loss: ${formatScalar(lastTrain?.loss)}, val loss: ${formatScalar(
+      lastVal?.loss
+    )}`,
+  });
+}
+
+function renderTrainingHistoryChart() {
+  const sorted = [...state.trainings].sort((a, b) => Number(a.id) - Number(b.id));
+  const points = sorted
+    .map((training) => ({
+      x: Number(training.id),
+      y: Number(getTrainingBestAccuracy(training)),
+    }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+
+  const bestTraining = [...state.trainings]
+    .map((training) => ({ training, value: getTrainingBestAccuracy(training) }))
+    .filter((item) => Number.isFinite(item.value))
+    .sort((a, b) => Number(b.value) - Number(a.value))[0];
+
+  renderLineChart({
+    canvas: dom.trainingHistoryChart,
+    infoNode: dom.trainingHistoryInfo,
+    series: [{ label: "Best accuracy", color: "#1f6d63", points }],
+    emptyMessage: "История запусков пока не содержит сохранённых метрик.",
+    infoText: bestTraining
+      ? `Лучший прогон: #${bestTraining.training.id}, accuracy ${formatPercent(bestTraining.value)}`
+      : "История запусков пока не содержит сохранённых метрик.",
+    valueFormatter: (value) => formatPercent(value, 0),
+    fixedMin: 0,
+    fixedMax: 1,
+  });
+}
+
+function renderUploadChart() {
+  const sorted = [...state.uploads].sort((a, b) => Number(a.id) - Number(b.id));
+  const uploadPoints = sorted
+    .map((item) => ({
+      x: Number(item.id),
+      y: Number(item.uploads),
+    }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+  const errorPoints = sorted
+    .map((item) => ({
+      x: Number(item.id),
+      y: Number(item.errors),
+    }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+
+  const totalUploads = state.uploads.reduce((sum, item) => sum + Number(item.uploads || 0), 0);
+  const totalErrors = state.uploads.reduce((sum, item) => sum + Number(item.errors || 0), 0);
+
+  renderLineChart({
+    canvas: dom.uploadChart,
+    infoNode: dom.uploadChartInfo,
+    series: [
+      { label: "Успешно", color: "#1f6d63", points: uploadPoints },
+      { label: "Ошибки", color: "#c96835", points: errorPoints },
+    ],
+    emptyMessage: "История импортов пока отсутствует.",
+    infoText: `Загружено: ${formatNumber(totalUploads)}, ошибок: ${formatNumber(totalErrors)}`,
+    valueFormatter: (value) => formatNumber(Math.round(value)),
+    fixedMin: 0,
+  });
 }
 
 function fillCategorySelect(selectNode) {
@@ -504,31 +783,109 @@ function formatTrainingMetrics(metrics) {
     return "Метрики отсутствуют";
   }
 
-  const trainRows = Array.isArray(metrics.train) ? metrics.train : [];
-  const valRows = Array.isArray(metrics.val) ? metrics.val : [];
-  const trainLast = trainRows.length > 0 ? trainRows[trainRows.length - 1] : null;
-  const valLast = valRows.length > 0 ? valRows[valRows.length - 1] : null;
+  const trainLast = getLastMetricPoint(metrics, "train");
+  const valLast = getLastMetricPoint(metrics, "val");
+  const bestVal = getBestMetricValue(metrics, "val", "accuracy");
+  const parts = [
+    trainLast ? `train ${formatPercent(trainLast.accuracy)}` : "train n/a",
+    valLast ? `val ${formatPercent(valLast.accuracy)}` : "val n/a",
+  ];
 
-  const trainPart = trainLast
-    ? `train acc: ${Number(trainLast.accuracy ?? 0).toFixed(3)}`
-    : "train acc: n/a";
-  const valPart = valLast
-    ? `val acc: ${Number(valLast.accuracy ?? 0).toFixed(3)}`
-    : "val acc: n/a";
+  if (Number.isFinite(bestVal)) {
+    parts.push(`best val ${formatPercent(bestVal)}`);
+  }
 
-  return `${trainPart}, ${valPart}`;
+  return parts.join(" · ");
+}
+
+function renderAdminSummary() {
+  if (!dom.adminStatChannels) return;
+
+  const totalUploads = state.uploads.reduce((sum, item) => sum + Number(item.uploads || 0), 0);
+  const activeTrainings = state.trainings.filter((item) => item.in_progress).length;
+  const bestAccuracy = state.trainings
+    .map((training) => getTrainingBestAccuracy(training))
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => Number(b) - Number(a))[0];
+
+  dom.adminStatChannels.textContent = formatNumber(state.channels.length);
+  dom.adminStatUploads.textContent = formatNumber(totalUploads);
+  dom.adminStatTrainings.textContent = formatNumber(state.trainings.length);
+  dom.adminStatActiveTrainings.textContent = formatNumber(activeTrainings);
+  dom.adminStatBestAccuracy.textContent = Number.isFinite(bestAccuracy)
+    ? formatPercent(bestAccuracy)
+    : "n/a";
+}
+
+function renderTrainingSnapshot(training) {
+  if (!dom.trainingSnapshotTitle) return;
+
+  if (!training) {
+    dom.trainingSnapshotTitle.textContent = "Обучение не выбрано";
+    setStatusBadge(dom.trainingSnapshotState, "Нет данных", "warn");
+    dom.trainingSnapshotMeta.textContent =
+      "Выберите обучение в истории, чтобы увидеть подробности запуска.";
+    renderDetailCards(dom.trainingDetails, [], "Параметры запуска будут показаны здесь.");
+    renderConfigChips(null);
+    if (dom.trainingDetailsText) {
+      dom.trainingDetailsText.textContent =
+        "Подробности запуска появятся после выбора обучения.";
+    }
+    clearTrainingChart();
+    clearCanvasChart(dom.trainingLossChart, dom.trainingLossInfo, "Выберите обучение для отображения loss.");
+    return;
+  }
+
+  const trainRows = getMetricRows(training.metrics, "train");
+  const valRows = getMetricRows(training.metrics, "val");
+  const lastTrain = getLastMetricPoint(training.metrics, "train");
+  const lastVal = getLastMetricPoint(training.metrics, "val");
+  const bestAccuracy = getTrainingBestAccuracy(training);
+  const detailItems = [
+    ["ID обучения", `#${training.id}`],
+    ["Устройство", formatScalar(training.device)],
+    ["Epochs", formatScalar(training.config?.epochs ?? trainRows.length)],
+    ["Лучшая accuracy", Number.isFinite(bestAccuracy) ? formatPercent(bestAccuracy) : "n/a"],
+    ["Последняя train accuracy", lastTrain ? formatPercent(lastTrain.accuracy) : "n/a"],
+    ["Последняя val accuracy", lastVal ? formatPercent(lastVal.accuracy) : "n/a"],
+    ["Создано", formatDate(training.created_at) || "—"],
+    ["Обновлено", formatDate(training.updated_at) || "—"],
+  ];
+
+  dom.trainingSnapshotTitle.textContent = `Обучение #${training.id}`;
+  setStatusBadge(dom.trainingSnapshotState, training.in_progress ? "В процессе" : "Завершено", training.in_progress ? "live" : "idle");
+  dom.trainingSnapshotMeta.textContent =
+    valRows.length > 0
+      ? `Зафиксировано ${trainRows.length} train-эпох и ${valRows.length} val-эпох.`
+      : `Зафиксировано ${trainRows.length} train-эпох. Валидационные метрики отсутствуют.`;
+  renderDetailCards(dom.trainingDetails, detailItems, "Параметры запуска будут показаны здесь.");
+  renderConfigChips(training.config);
+  if (dom.trainingDetailsText) {
+    const modelDir = formatScalar(training.model_dir);
+    dom.trainingDetailsText.textContent = training.details
+      ? `${training.details} Путь к модели: ${modelDir}.`
+      : `Путь к модели: ${modelDir}.`;
+  }
+  renderTrainingChart(training);
+  renderTrainingLossChart(training);
 }
 
 function renderUploads() {
   if (!dom.uploadsList) return;
   dom.uploadsList.innerHTML = "";
-  if (!state.isAdmin) return;
+  if (!state.isAdmin) {
+    clearCanvasChart(dom.uploadChart, dom.uploadChartInfo, "История импортов недоступна.");
+    renderAdminSummary();
+    return;
+  }
 
   if (state.uploads.length === 0) {
     const empty = document.createElement("p");
     empty.className = "muted";
     empty.textContent = "Загрузок пока нет.";
     dom.uploadsList.appendChild(empty);
+    clearCanvasChart(dom.uploadChart, dom.uploadChartInfo, "История импортов пуста.");
+    renderAdminSummary();
     return;
   }
 
@@ -536,35 +893,70 @@ function renderUploads() {
   const fragment = document.createDocumentFragment();
 
   sorted.forEach((upload) => {
-    const item = document.createElement("div");
-    item.className = "compact-item";
+    const item = document.createElement("article");
+    item.className = "timeline-card";
+
+    const header = document.createElement("div");
+    header.className = "timeline-header";
+
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "timeline-title";
+
     const title = document.createElement("strong");
     title.textContent = `Импорт #${upload.id}`;
 
-    const stats = document.createElement("small");
-    stats.textContent = `uploads: ${upload.uploads}, errors: ${upload.errors}`;
-
-    const status = document.createElement("small");
-    status.textContent = upload.is_completed ? "Статус: завершен" : "Статус: в процессе";
-
     const date = document.createElement("small");
-    date.textContent = `Обновлено: ${formatDate(upload.updated_at)}`;
+    date.textContent = `Обновлено ${formatDate(upload.updated_at)}`;
 
-    item.appendChild(title);
-    item.appendChild(stats);
-    item.appendChild(status);
-    item.appendChild(date);
+    const status = document.createElement("span");
+    status.className = "status-badge";
+    setStatusBadge(status, upload.is_completed ? "Завершен" : "В процессе", upload.is_completed ? "idle" : "live");
+
+    titleWrap.appendChild(title);
+    titleWrap.appendChild(date);
+    header.appendChild(titleWrap);
+    header.appendChild(status);
+
+    const metrics = document.createElement("div");
+    metrics.className = "timeline-metrics";
+
+    const uploadedPill = document.createElement("span");
+    uploadedPill.className = "detail-pill";
+    uploadedPill.textContent = `${formatNumber(upload.uploads)} загружено`;
+
+    const errorPill = document.createElement("span");
+    errorPill.className = "detail-pill";
+    errorPill.textContent = `${formatNumber(upload.errors)} ошибок`;
+
+    metrics.appendChild(uploadedPill);
+    metrics.appendChild(errorPill);
+
+    const note = document.createElement("p");
+    note.className = "timeline-note muted";
+    const details = Array.isArray(upload.details) ? upload.details.filter(Boolean) : [];
+    note.textContent =
+      details.length > 0
+        ? details.slice(0, 2).join(" | ")
+        : "Технические детали загрузки не зафиксированы.";
+
+    item.appendChild(header);
+    item.appendChild(metrics);
+    item.appendChild(note);
     fragment.appendChild(item);
   });
 
   dom.uploadsList.appendChild(fragment);
+  renderUploadChart();
+  renderAdminSummary();
 }
 
 function renderTrainings() {
   if (!dom.trainingsList) return;
   dom.trainingsList.innerHTML = "";
   if (!state.isAdmin) {
-    clearTrainingChart();
+    renderTrainingSnapshot(null);
+    clearCanvasChart(dom.trainingHistoryChart, dom.trainingHistoryInfo, "История обучений недоступна.");
+    renderAdminSummary();
     return;
   }
 
@@ -574,7 +966,9 @@ function renderTrainings() {
     empty.textContent = "История обучений пуста.";
     dom.trainingsList.appendChild(empty);
     state.selectedTrainingId = null;
-    clearTrainingChart("История обучений пуста.");
+    renderTrainingSnapshot(null);
+    clearCanvasChart(dom.trainingHistoryChart, dom.trainingHistoryInfo, "История обучений пуста.");
+    renderAdminSummary();
     return;
   }
 
@@ -588,24 +982,62 @@ function renderTrainings() {
   const fragment = document.createDocumentFragment();
 
   sorted.forEach((training) => {
-    const item = document.createElement("div");
-    item.className = "compact-item training-item";
+    const item = document.createElement("article");
+    item.className = "timeline-card training-item";
     item.classList.toggle("active", training.id === selectedTraining.id);
+
+    const header = document.createElement("div");
+    header.className = "timeline-header";
+
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "timeline-title";
 
     const title = document.createElement("strong");
     title.textContent = `Обучение #${training.id}`;
 
-    const status = document.createElement("small");
-    status.textContent = training.in_progress ? "Статус: в процессе" : "Статус: завершено";
+    const date = document.createElement("small");
+    date.textContent = `Создано ${formatDate(training.created_at)}`;
 
-    const metrics = document.createElement("small");
-    metrics.textContent = formatTrainingMetrics(training.metrics);
+    const status = document.createElement("span");
+    status.className = "status-badge";
+    setStatusBadge(
+      status,
+      training.in_progress ? "В процессе" : "Завершено",
+      training.in_progress ? "live" : "idle"
+    );
 
-    const details = document.createElement("small");
-    details.textContent = training.details || "Без подробностей";
+    titleWrap.appendChild(title);
+    titleWrap.appendChild(date);
+    header.appendChild(titleWrap);
+    header.appendChild(status);
 
-    item.appendChild(title);
-    item.appendChild(status);
+    const metrics = document.createElement("div");
+    metrics.className = "timeline-metrics";
+
+    const accuracyPill = document.createElement("span");
+    accuracyPill.className = "detail-pill";
+    const bestAccuracy = getTrainingBestAccuracy(training);
+    accuracyPill.textContent = Number.isFinite(bestAccuracy)
+      ? `best ${formatPercent(bestAccuracy)}`
+      : "best n/a";
+
+    const metricSummary = document.createElement("span");
+    metricSummary.className = "detail-pill";
+    metricSummary.textContent = formatTrainingMetrics(training.metrics);
+
+    const devicePill = document.createElement("span");
+    devicePill.className = "detail-pill";
+    devicePill.textContent = formatScalar(training.device);
+
+    metrics.appendChild(accuracyPill);
+    metrics.appendChild(metricSummary);
+    metrics.appendChild(devicePill);
+
+    const details = document.createElement("p");
+    details.className = "timeline-note muted";
+    details.textContent = training.details || `Путь к модели: ${formatScalar(training.model_dir)}`;
+
+    item.appendChild(header);
     item.appendChild(metrics);
     item.appendChild(details);
     item.addEventListener("click", () => {
@@ -616,13 +1048,15 @@ function renderTrainings() {
   });
 
   dom.trainingsList.appendChild(fragment);
-  renderTrainingChart(selectedTraining);
+  renderTrainingSnapshot(selectedTraining);
+  renderTrainingHistoryChart();
+  renderAdminSummary();
 }
 
 async function loadUploads() {
   if (!state.isAdmin) return;
   try {
-    const data = await requestJson("/samples/");
+    const data = await requestJson(API_ENDPOINTS.uploads);
     state.uploads = data.data || [];
     renderUploads();
   } catch (error) {
@@ -633,7 +1067,7 @@ async function loadUploads() {
 async function loadTrainings() {
   if (!state.isAdmin) return;
   try {
-    const data = await requestJson("/trainings/");
+    const data = await requestJson(API_ENDPOINTS.trainings);
     state.trainings = data.data || [];
     if (
       state.trainings.length > 0 &&
@@ -650,7 +1084,7 @@ async function loadTrainings() {
 
 async function loadChannels() {
   try {
-    const data = await requestJson("/channels/");
+    const data = await requestJson(API_ENDPOINTS.channels);
     state.channels = data.data || [];
     state.channelMap = new Map(state.channels.map((ch) => [ch.id, ch]));
     dom.channelTotal.textContent = state.channels.length;
@@ -752,7 +1186,7 @@ async function loadNews({ reset = false } = {}) {
   if (!reset && state.newsCursor) params.set("search_after", state.newsCursor);
 
   try {
-    const data = await requestJson(`/news/?${params.toString()}`);
+    const data = await requestJson(`${API_ENDPOINTS.news}?${params.toString()}`);
     const items = data.news || [];
     const totalCount = data.meta?.total_count ?? 0;
     const currentCount = reset ? 0 : dom.newsGrid.children.length;
@@ -833,7 +1267,7 @@ function renderNews(items, append = false) {
 async function loadSubscriptions() {
   if (!state.user) return;
   try {
-    const data = await requestJson("/subscriptions/");
+    const data = await requestJson(API_ENDPOINTS.subscriptions);
     state.subscriptions = data.data || [];
     state.subsByChannel = new Map(state.subscriptions.map((sub) => [sub.channel_id, sub]));
     renderSubscriptions();
@@ -975,71 +1409,86 @@ function renderProfile() {
 function renderAdminChannels() {
   if (!dom.adminChannelList) return;
   dom.adminChannelList.innerHTML = "";
-  if (!state.isAdmin) return;
+  if (!state.isAdmin) {
+    renderAdminSummary();
+    return;
+  }
+
+  if (state.channels.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "Каналы пока не добавлены.";
+    dom.adminChannelList.appendChild(empty);
+    renderAdminSummary();
+    return;
+  }
 
   const fragment = document.createDocumentFragment();
-  state.channels.forEach((channel) => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "panel admin-card";
+  [...state.channels]
+    .sort((a, b) => String(a.title).localeCompare(String(b.title), "ru"))
+    .forEach((channel) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "panel admin-card";
 
-    const title = document.createElement("h3");
-    title.textContent = `${channel.title} (#${channel.id})`;
+      const title = document.createElement("h3");
+      title.textContent = `${channel.title} (#${channel.id})`;
 
-    const form = document.createElement("form");
-    form.className = "inline-form";
+      const form = document.createElement("form");
+      form.className = "inline-form";
 
-    const titleField = buildField("Название", "title", channel.title);
-    const linkField = buildField("RSS-ссылка", "link", channel.link, "url");
-    const descField = buildTextarea("Описание", "description", channel.description || "");
+      const titleField = buildField("Название", "title", channel.title);
+      const linkField = buildField("RSS-ссылка", "link", channel.link, "url");
+      const descField = buildTextarea("Описание", "description", channel.description || "");
 
-    const actions = document.createElement("div");
-    actions.className = "actions";
+      const actions = document.createElement("div");
+      actions.className = "actions";
 
-    const saveBtn = document.createElement("button");
-    saveBtn.type = "submit";
-    saveBtn.className = "btn accent";
-    saveBtn.textContent = "Сохранить";
+      const saveBtn = document.createElement("button");
+      saveBtn.type = "submit";
+      saveBtn.className = "btn accent";
+      saveBtn.textContent = "Сохранить";
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
-    deleteBtn.className = "btn ghost";
-    deleteBtn.textContent = "Удалить";
-    deleteBtn.addEventListener("click", async () => {
-      await deleteChannel(channel.id);
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "btn ghost";
+      deleteBtn.textContent = "Удалить";
+      deleteBtn.addEventListener("click", async () => {
+        await deleteChannel(channel.id);
+      });
+
+      actions.appendChild(saveBtn);
+      actions.appendChild(deleteBtn);
+
+      form.appendChild(titleField);
+      form.appendChild(linkField);
+      form.appendChild(descField);
+      form.appendChild(actions);
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const payload = {};
+        const titleValue = titleField.querySelector("input").value.trim();
+        const linkValue = linkField.querySelector("input").value.trim();
+        const descValue = descField.querySelector("textarea").value.trim();
+
+        if (titleValue !== channel.title) payload.title = titleValue;
+        if (linkValue !== channel.link) payload.link = linkValue;
+        if (descValue !== (channel.description || "")) payload.description = descValue;
+
+        if (Object.keys(payload).length === 0) {
+          showToast("Нет изменений для сохранения.");
+          return;
+        }
+        await updateChannel(channel.id, payload);
+      });
+
+      wrapper.appendChild(title);
+      wrapper.appendChild(form);
+      fragment.appendChild(wrapper);
     });
-
-    actions.appendChild(saveBtn);
-    actions.appendChild(deleteBtn);
-
-    form.appendChild(titleField);
-    form.appendChild(linkField);
-    form.appendChild(descField);
-    form.appendChild(actions);
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const payload = {};
-      const titleValue = titleField.querySelector("input").value.trim();
-      const linkValue = linkField.querySelector("input").value.trim();
-      const descValue = descField.querySelector("textarea").value.trim();
-
-      if (titleValue !== channel.title) payload.title = titleValue;
-      if (linkValue !== channel.link) payload.link = linkValue;
-      if (descValue !== (channel.description || "")) payload.description = descValue;
-
-      if (Object.keys(payload).length === 0) {
-        showToast("Нет изменений для сохранения.");
-        return;
-      }
-      await updateChannel(channel.id, payload);
-    });
-
-    wrapper.appendChild(title);
-    wrapper.appendChild(form);
-    fragment.appendChild(wrapper);
-  });
 
   dom.adminChannelList.appendChild(fragment);
+  renderAdminSummary();
 }
 
 function buildField(labelText, name, value, type = "text") {
@@ -1072,7 +1521,9 @@ function buildTextarea(labelText, name, value) {
 
 async function subscribeChannel(channelId) {
   try {
-    await requestJson(`/subscriptions/?channel_id=${channelId}`, { method: "POST" });
+    await requestJson(`${API_ENDPOINTS.subscriptions}?channel_id=${channelId}`, {
+      method: "POST",
+    });
     showToast("Подписка добавлена.");
     await loadSubscriptions();
   } catch (error) {
@@ -1084,7 +1535,9 @@ async function unsubscribeChannel(channelId) {
   const sub = state.subsByChannel.get(channelId);
   if (!sub) return;
   try {
-    await requestJson(`/subscriptions/?sub_id=${sub.id}`, { method: "DELETE" });
+    await requestJson(`${API_ENDPOINTS.subscriptions}?sub_id=${sub.id}`, {
+      method: "DELETE",
+    });
     showToast("Подписка удалена.");
     await loadSubscriptions();
   } catch (error) {
@@ -1094,7 +1547,7 @@ async function unsubscribeChannel(channelId) {
 
 async function updateChannel(channelId, payload) {
   try {
-    await requestJson(`/channels/${channelId}`, {
+    await requestJson(`${API_ENDPOINTS.channels}${channelId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -1108,7 +1561,7 @@ async function updateChannel(channelId, payload) {
 
 async function deleteChannel(channelId) {
   try {
-    await requestJson(`/channels/${channelId}`, { method: "DELETE" });
+    await requestJson(`${API_ENDPOINTS.channels}${channelId}`, { method: "DELETE" });
     showToast("Канал удалён.");
     await loadChannels();
   } catch (error) {
@@ -1119,7 +1572,7 @@ async function deleteChannel(channelId) {
 async function uploadTrainingCsv(file) {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await apiFetch("/samples/", {
+  const response = await apiFetch(API_ENDPOINTS.uploads, {
     method: "POST",
     body: formData,
   });
@@ -1131,7 +1584,7 @@ async function uploadTrainingCsv(file) {
 
 async function addLabeledSample(newsId, category) {
   const response = await apiFetch(
-    `/samples/${newsId}?category=${encodeURIComponent(category)}`,
+    `${API_ENDPOINTS.uploads}${newsId}?category=${encodeURIComponent(category)}`,
     { method: "POST" }
   );
   if (!response.ok) {
@@ -1160,7 +1613,7 @@ function buildTrainPayload(formData) {
 }
 
 async function startManualTraining(payload) {
-  return requestJson("/trainings/", {
+  return requestJson(API_ENDPOINTS.trainings, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -1298,7 +1751,7 @@ function bindEvents() {
     body.set("password", String(formData.get("password") || ""));
 
     try {
-      const data = await requestJson("/auth/login/", {
+      const data = await requestJson(API_ENDPOINTS.auth + "login/", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body,
@@ -1322,7 +1775,7 @@ function bindEvents() {
     body.set("password", String(formData.get("password") || ""));
 
     try {
-      await requestJson("/auth/register/", {
+      await requestJson(API_ENDPOINTS.auth + "register/", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body,
@@ -1354,7 +1807,7 @@ function bindEvents() {
     }
 
     try {
-      const profile = await requestJson("/auth/profile/", {
+      const profile = await requestJson(API_ENDPOINTS.auth + "profile/", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1376,7 +1829,7 @@ function bindEvents() {
     };
 
     try {
-      await requestJson("/channels/", {
+      await requestJson(API_ENDPOINTS.channels, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1462,19 +1915,20 @@ function bindEvents() {
 
 async function handleRoute() {
   const rawRoute = location.hash.replace("#/", "") || "news";
+  const routeAliases = {
+    "admin-channels": "admin",
+    "admin-samples": "admin",
+    "admin-training": "admin",
+  };
+  const normalizedRoute = routeAliases[rawRoute] || rawRoute;
   const availableRoutes = new Set(Array.from(dom.views).map((view) => view.id));
-  const route = availableRoutes.has(rawRoute) ? rawRoute : "news";
+  const route = availableRoutes.has(normalizedRoute) ? normalizedRoute : "news";
   if (route !== rawRoute) {
-    location.hash = "#/news";
+    location.hash = `#/${route}`;
+    return;
   }
 
-  const protectedRoutes = [
-    "subscriptions",
-    "profile",
-    "admin-channels",
-    "admin-samples",
-    "admin-training",
-  ];
+  const protectedRoutes = ["subscriptions", "profile", "admin"];
   if (protectedRoutes.includes(route)) {
     if (!requireAuth(route)) return;
   }
@@ -1492,14 +1946,8 @@ async function handleRoute() {
   if (route === "profile") {
     await fetchProfile();
   }
-  if (route === "admin-channels") {
-    renderAdminChannels();
-  }
-  if (route === "admin-samples") {
-    await loadUploads();
-  }
-  if (route === "admin-training") {
-    await loadTrainings();
+  if (route === "admin") {
+    await Promise.all([loadChannels(), loadUploads(), loadTrainings()]);
   }
 }
 
@@ -1509,6 +1957,15 @@ async function bootstrap() {
   fillCategorySelect(dom.sampleCategorySelect);
   updateActiveCategoriesChip();
   clearTrainingChart();
+  clearCanvasChart(dom.trainingLossChart, dom.trainingLossInfo, "Выберите обучение для отображения loss.");
+  clearCanvasChart(
+    dom.trainingHistoryChart,
+    dom.trainingHistoryInfo,
+    "История обучений появится после первой сессии."
+  );
+  clearCanvasChart(dom.uploadChart, dom.uploadChartInfo, "История импортов появится после загрузки данных.");
+  renderTrainingSnapshot(null);
+  renderAdminSummary();
   await loadChannels();
 
   if (state.accessToken) {
