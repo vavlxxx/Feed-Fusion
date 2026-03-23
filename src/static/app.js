@@ -10,6 +10,7 @@ const API_ENDPOINTS = {
 };
 const ACCESS_TOKEN_KEY = "ff_access_token";
 const UNCATEGORIZED_FILTER = "__uncategorized__";
+const APP_TIMEZONE = "Etc/GMT-5";
 const NEWS_CATEGORIES = [
   { value: "Международные отношения", label: "Мир" },
   { value: "Культура", label: "Культура" },
@@ -270,8 +271,16 @@ function setAdminTab(tab) {
   const available = new Set(["channels", "datasets", "training"]);
   state.adminTab = available.has(tab) ? tab : "channels";
 
+  if (!dom.adminTabs.length || !dom.adminPanels.length) {
+    return;
+  }
+
   dom.adminTabs.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.adminTab === state.adminTab);
+    button.setAttribute(
+      "aria-pressed",
+      button.dataset.adminTab === state.adminTab ? "true" : "false"
+    );
   });
 
   dom.adminPanels.forEach((panel) => {
@@ -316,11 +325,14 @@ function truncate(text, limit = 160) {
 
 function formatDate(value) {
   if (!value) return "";
-  const date = new Date(value);
+  const normalizedValue =
+    typeof value === "string" && !/([zZ]|[+\-]\d{2}:\d{2})$/.test(value) ? `${value}Z` : value;
+  const date = new Date(normalizedValue);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("ru-RU", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: APP_TIMEZONE,
   }).format(date);
 }
 
@@ -942,16 +954,20 @@ function formatTrainingMetrics(metrics) {
   const trainLast = getLastMetricPoint(metrics, "train");
   const valLast = getLastMetricPoint(metrics, "val");
   const bestVal = getBestMetricValue(metrics, "val", "accuracy");
-  const parts = [
-    trainLast ? `train ${formatPercent(trainLast.accuracy)}` : "train n/a",
-    valLast ? `val ${formatPercent(valLast.accuracy)}` : "val n/a",
-  ];
+  const parts = [];
+
+  if (trainLast) {
+    parts.push(`train ${formatPercent(trainLast.accuracy)}`);
+  }
+  if (valLast) {
+    parts.push(`val ${formatPercent(valLast.accuracy)}`);
+  }
 
   if (Number.isFinite(bestVal)) {
     parts.push(`best val ${formatPercent(bestVal)}`);
   }
 
-  return parts.join(" · ");
+  return parts.length > 0 ? parts.join(" · ") : "Метрики отсутствуют";
 }
 
 function renderAdminSummary() {
@@ -970,7 +986,7 @@ function renderAdminSummary() {
   dom.adminStatActiveTrainings.textContent = formatNumber(activeTrainings);
   dom.adminStatBestAccuracy.textContent = Number.isFinite(bestAccuracy)
     ? formatPercent(bestAccuracy)
-    : "n/a";
+    : "—";
 }
 
 function renderTrainingSnapshot(training) {
@@ -1001,9 +1017,9 @@ function renderTrainingSnapshot(training) {
     ["Запуск", `#${training.id}`],
     ["Где обучалось", formatScalar(training.device)],
     ["Эпох", formatScalar(training.config?.epochs ?? trainRows.length)],
-    ["Лучший результат", Number.isFinite(bestAccuracy) ? formatPercent(bestAccuracy) : "n/a"],
-    ["Текущее train", lastTrain ? formatPercent(lastTrain.accuracy) : "n/a"],
-    ["Текущее validation", lastVal ? formatPercent(lastVal.accuracy) : "n/a"],
+    ["Лучший результат", Number.isFinite(bestAccuracy) ? formatPercent(bestAccuracy) : "—"],
+    ["Текущее train", lastTrain ? formatPercent(lastTrain.accuracy) : "—"],
+    ["Текущее validation", lastVal ? formatPercent(lastVal.accuracy) : "—"],
     ["Старт", formatDate(training.created_at) || "—"],
     ["Обновление", formatDate(training.updated_at) || "—"],
   ];
@@ -1175,7 +1191,7 @@ function renderTrainings() {
     const bestAccuracy = getTrainingBestAccuracy(training);
     accuracyPill.textContent = Number.isFinite(bestAccuracy)
       ? `best ${formatPercent(bestAccuracy)}`
-      : "best n/a";
+      : "без accuracy";
 
     const metricSummary = document.createElement("span");
     metricSummary.className = "detail-pill";
@@ -1985,7 +2001,17 @@ function bindEvents() {
 
   dom.adminTabs.forEach((button) => {
     button.addEventListener("click", () => {
-      setAdminTab(button.dataset.adminTab);
+      const tab = button.dataset.adminTab || "channels";
+      setAdminTab(tab);
+      const routeMap = {
+        channels: "admin-channels",
+        datasets: "admin-samples",
+        training: "admin-training",
+      };
+      const nextHash = `#/${routeMap[tab] || "admin"}`;
+      if (location.hash !== nextHash) {
+        location.hash = nextHash;
+      }
     });
   });
 
@@ -2199,7 +2225,7 @@ async function handleRoute() {
   if (normalizedRoute === "admin") {
     setAdminTab(adminTabByRoute[rawRoute] || state.adminTab);
   }
-  if (route !== rawRoute) {
+  if (route === "news" && rawRoute !== "news" && !routeAliases[rawRoute]) {
     location.hash = `#/${route}`;
     return;
   }

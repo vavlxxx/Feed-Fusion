@@ -166,26 +166,28 @@
             <p class="muted">Укажите Telegram ID для получения новостей.</p>
           </div>
         </div>
-        <div class="profile-layout profile-layout-wide">
-          <div class="panel profile-card profile-summary-card">
+        <div class="profile-layout profile-layout-single">
+          <section class="panel profile-card profile-unified-card">
             <div class="profile-info" id="profileInfo"></div>
-          </div>
-          <form class="panel profile-card profile-edit-card" id="profileForm">
-            <h3>Редактировать</h3>
-            <label class="field">
-              <span>Имя</span>
-              <input type="text" name="first_name" />
-            </label>
-            <label class="field">
-              <span>Фамилия</span>
-              <input type="text" name="last_name" />
-            </label>
-            <label class="field">
-              <span>Telegram ID</span>
-              <input type="text" name="telegram_id" placeholder="Например: 123456789" />
-            </label>
-            <button class="btn accent" type="submit">Сохранить</button>
-          </form>
+            <form class="profile-edit-form" id="profileForm">
+              <h3>Редактировать</h3>
+              <div class="profile-edit-grid">
+                <label class="field">
+                  <span>Имя</span>
+                  <input type="text" name="first_name" />
+                </label>
+                <label class="field">
+                  <span>Фамилия</span>
+                  <input type="text" name="last_name" />
+                </label>
+                <label class="field">
+                  <span>Telegram ID</span>
+                  <input type="text" name="telegram_id" placeholder="Например: 123456789" />
+                </label>
+              </div>
+              <button class="btn accent" type="submit">Сохранить</button>
+            </form>
+          </section>
         </div>
       </section>
 
@@ -230,9 +232,9 @@
               <p class="muted">Прогоны, которые ещё не завершились.</p>
             </article>
             <article class="panel admin-stat-card">
-              <span class="admin-stat-label">Лучшая val accuracy</span>
+              <span class="admin-stat-label">Лучшая accuracy</span>
               <strong class="admin-stat-value" id="adminStatBestAccuracy">0%</strong>
-              <p class="muted">Максимальное значение среди завершённых обучений.</p>
+              <p class="muted">Лучший доступный результат среди завершённых обучений.</p>
             </article>
           </div>
 
@@ -327,20 +329,10 @@
             <div class="admin-section-head">
               <div>
                 <h3>Обучение модели</h3>
-                <p class="muted">Лаконичная сводка, справка и графики метрик для выбранного запуска.</p>
+                <p class="muted">Сводка по запуску, метрики и история обучений.</p>
               </div>
             </div>
             <div class="admin-section-grid admin-section-grid-training">
-              <div class="panel admin-inner-panel training-help-panel">
-                <h3>Как читать этот раздел</h3>
-                <ul class="admin-help-list">
-                  <li><strong>Запуск</strong> — стартует новую сессию обучения модели.</li>
-                  <li><strong>Accuracy</strong> — доля правильных ответов, чем выше, тем лучше.</li>
-                  <li><strong>Loss</strong> — ошибка модели, чем ниже, тем лучше.</li>
-                  <li><strong>История запусков</strong> — помогает сравнить последние обучения между собой.</li>
-                </ul>
-              </div>
-
               <div class="panel admin-inner-panel form-card">
                 <h3>Параметры запуска</h3>
                 <form id="trainModelForm" class="inline-form">
@@ -383,6 +375,20 @@
                 </form>
               </div>
 
+              <div class="panel admin-inner-panel training-help-panel">
+                <h3>Справка</h3>
+                <ul class="admin-help-list">
+  <li><strong>epochs</strong> — сколько раз модель полностью проходит по всей обучающей выборке.</li>
+  <li><strong>batch_size</strong> — сколько примеров модель обрабатывает за один шаг.</li>
+  <li><strong>lr</strong> — скорость обучения (learning rate), определяющая силу изменения весов.</li>
+  <li><strong>val_split</strong> — доля данных, откладываемая для проверки качества модели.</li>
+  <li><strong>embed_dim</strong> — размер внутреннего векторного представления текста.</li>
+  <li><strong>dropout</strong> — доля случайно отключаемых нейронов для борьбы с переобучением.</li>
+  <li><strong>balance</strong> — включает компенсацию перекоса категорий в данных.</li>
+</ul>
+
+              </div>
+
               <div class="panel admin-inner-panel training-summary-panel">
                 <div class="training-summary-head">
                   <div>
@@ -395,26 +401,25 @@
                   Выберите обучение в истории, чтобы увидеть подробности запуска.
                 </p>
                 <div id="trainingDetails" class="detail-grid"></div>
-                <div class="config-block">
-                  <div class="config-head">
-                    <h3>Конфиг запуска</h3>
-                    <p class="muted">Параметры, записанные в БД для выбранного обучения.</p>
-                  </div>
-                  <div id="trainingConfig" class="config-grid"></div>
-                </div>
                 <p class="muted training-detail-note" id="trainingDetailsText">
                   Подробности запуска появятся после выбора обучения.
                 </p>
+              </div>
+
+              <div class="panel admin-inner-panel training-config-panel">
+                <div class="config-head">
+                  <h3>Конфиг обучения</h3>
+                </div>
+                <div id="trainingConfig" class="config-grid"></div>
               </div>
 
               <div class="panel admin-inner-panel chart-panel">
                 <div class="chart-head">
                   <div>
                     <h3>Accuracy по эпохам</h3>
-                    <p class="muted">Показывает, насколько модель улучшалась во время выбранного запуска.</p>
                   </div>
                 </div>
-                <canvas id="trainingChart" width="640" height="260" aria-label="График точности обучения"></canvas>
+                <canvas id="trainingChart" width="640" height="320" aria-label="График точности обучения"></canvas>
                 <p class="muted" id="trainingChartInfo">Выберите обучение для отображения метрик.</p>
               </div>
 
@@ -422,10 +427,9 @@
                 <div class="chart-head">
                   <div>
                     <h3>Loss по эпохам</h3>
-                    <p class="muted">Показывает, насколько снижалась ошибка модели во время выбранного запуска.</p>
                   </div>
                 </div>
-                <canvas id="trainingLossChart" width="640" height="260" aria-label="График функции потерь"></canvas>
+                <canvas id="trainingLossChart" width="640" height="320" aria-label="График функции потерь"></canvas>
                 <p class="muted" id="trainingLossInfo">Выберите обучение для отображения метрик.</p>
               </div>
 
@@ -433,10 +437,9 @@
                 <div class="chart-head">
                   <div>
                     <h3>История качества модели</h3>
-                    <p class="muted">Лучшее качество по каждому запуску обучения из БД.</p>
                   </div>
                 </div>
-                <canvas id="trainingHistoryChart" width="640" height="260" aria-label="История качества модели"></canvas>
+                <canvas id="trainingHistoryChart" width="640" height="320" aria-label="История качества модели"></canvas>
                 <p class="muted" id="trainingHistoryInfo">История обучений появится после первой сессии.</p>
               </div>
 
@@ -444,10 +447,9 @@
                 <div class="admin-list-head">
                   <div>
                     <h3>История запусков</h3>
-                    <p class="muted">Выберите прогон, чтобы обновить графики, конфиг и технические детали.</p>
                   </div>
                 </div>
-                <div id="trainingsList" class="stack compact-stack timeline-stack"></div>
+                <div id="trainingsList" class="training-history-grid"></div>
               </div>
             </div>
           </section>

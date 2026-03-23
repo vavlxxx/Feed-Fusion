@@ -16,6 +16,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   font-family: "Golos Text", "Segoe UI", sans-serif;
@@ -776,7 +780,9 @@ button {
 
 .admin-history-panel,
 .chart-panel,
-.training-summary-panel {
+.training-summary-panel,
+.training-config-panel,
+.training-help-panel {
   min-height: 100%;
 }
 
@@ -794,6 +800,13 @@ button {
 .timeline-stack {
   gap: 0.8rem;
   max-height: 420px;
+}
+
+.training-history-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 .timeline-card {
@@ -814,6 +827,10 @@ button {
 .timeline-card.active {
   border-color: rgba(31, 109, 99, 0.5);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(220, 236, 232, 0.78));
+}
+
+.training-history-grid .timeline-card {
+  min-height: 100%;
 }
 
 .timeline-header {
@@ -895,19 +912,23 @@ button {
 }
 
 .config-grid {
-  display: flex;
+  display: grid;
   gap: 0.6rem;
-  flex-wrap: wrap;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  align-items: stretch;
 }
 
 .config-chip {
-  display: inline-grid;
+  display: grid;
   gap: 0.15rem;
   padding: 0.65rem 0.8rem;
-  min-width: 110px;
+  min-width: 0;
+  min-height: 70px;
+  width: 100%;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(21, 77, 71, 0.12);
+  align-content: start;
 }
 
 .config-chip span {
@@ -922,11 +943,28 @@ button {
   font-size: 0.95rem;
 }
 
+#trainModelForm .actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+}
+
+#trainModelForm .actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
 .training-detail-note {
   padding: 0.9rem 1rem;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.86);
   border: 1px dashed rgba(21, 77, 71, 0.16);
+}
+
+.training-config-panel,
+.training-help-panel {
+  align-content: start;
 }
 
 .admin-channel-stack {
@@ -955,6 +993,12 @@ button {
   border-radius: 16px;
   border: 1px solid rgba(21, 77, 71, 0.12);
   background: linear-gradient(180deg, #ffffff, #f7fbfa);
+}
+
+#trainingChart,
+#trainingLossChart,
+#trainingHistoryChart {
+  min-height: 320px;
 }
 
 .stack {
@@ -1031,23 +1075,23 @@ button {
   background: #fff;
 }
 
-.profile-layout-wide {
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
-}
-
-.profile-summary-card {
-  padding: 1.8rem;
-}
-
-.profile-edit-card {
-  align-content: start;
+.profile-layout-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .profile-summary {
   display: grid;
   grid-template-columns: 140px minmax(0, 1fr);
   gap: 1.5rem;
-  align-items: center;
+  align-items: start;
+}
+
+.profile-unified-card {
+  width: 100%;
+  min-height: 0;
+  padding: 1.8rem;
+  align-content: start;
+  justify-items: start;
 }
 
 .profile-avatar {
@@ -1071,6 +1115,8 @@ button {
 .profile-summary-content {
   display: grid;
   gap: 0.7rem;
+  justify-items: start;
+  text-align: left;
 }
 
 .profile-username {
@@ -1110,6 +1156,32 @@ button {
   color: var(--ink);
 }
 
+.profile-edit-form {
+  width: 100%;
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  align-content: start;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--outline);
+}
+
+.profile-edit-form h3 {
+  margin: 0;
+}
+
+.profile-edit-grid {
+  width: 100%;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+
+.profile-edit-form .btn {
+  min-width: 180px;
+}
+
 .admin-tabbar {
   display: flex;
   gap: 0.8rem;
@@ -1136,6 +1208,10 @@ button {
 
 .admin-section-head-actions {
   align-items: center;
+}
+
+.admin-section[hidden] {
+  display: none !important;
 }
 
 .admin-channel-grid {
@@ -1337,11 +1413,19 @@ body.modal-open {
     grid-template-columns: 1fr;
   }
 
+  .training-history-grid {
+    grid-template-columns: 1fr;
+  }
+
   .chart-panel-wide {
     grid-column: auto;
   }
 
   .profile-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-edit-grid {
     grid-template-columns: 1fr;
   }
 }

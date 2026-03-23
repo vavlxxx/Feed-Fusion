@@ -63,6 +63,7 @@ class TrainingAddDTO(BaseDTO):
 class TrainingDTO(TrainingAddDTO):
     in_progress: bool
     id: int
+    metrics: dict | None = None
     details: str | None = None
     created_at: datetime
     updated_at: datetime
