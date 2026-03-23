@@ -55,6 +55,9 @@ async def get_all_news(
     categories: list[NewsCategory] | None = Query(
         None, description="Категории новостей"
     ),
+    without_category: bool = Query(
+        False, description="???????? ??????? ??? ?????????"
+    ),
     channel_ids: list[int] | None = Query(
         None, description="ID каналов"
     ),
@@ -71,6 +74,7 @@ async def get_all_news(
             query_string=query,
             # offset=pagination.offset,
             categories=categories,
+            without_category=without_category,
             limit=pagination.limit,
             channel_ids=channel_ids,
             search_after=search_after,

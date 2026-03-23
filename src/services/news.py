@@ -14,6 +14,7 @@ from src.tasks.ml import upload_training_dataset
 from src.config import settings
 from src.services.base import BaseService
 from src.utils.es_manager import ESManager
+from src.utils.search_sync import sync_news_documents
 from src.utils.exceptions import (
     NewsNotFoundError,
     ChannelNotFoundError,
@@ -98,6 +99,15 @@ class NewsService(BaseService):
             raise DenormalizedNewsAlreadyExistsError from exc
 
         await self.db.commit()
+        await sync_news_documents(
+            [
+                {
+                    **news.model_dump(mode="json"),
+                    "category": category.value,
+                }
+            ],
+            refresh=True,
+        )
         return added_news
 
     async def upload_denormalized_news(self, content: bytes):
@@ -130,6 +140,7 @@ class NewsService(BaseService):
         limit: int,
         # offset: int,
         categories: list[NewsCategory] | None = None,
+        without_category: bool = False,
         query_string: str | None = None,
         channel_ids: list[int] | None = None,
         search_after: str | None = None,
@@ -145,35 +156,40 @@ class NewsService(BaseService):
         current_cursor = CursorEncoder().decode_cursor(search_after)
         offset = int(current_cursor.get("offset", 0) or 0)
 
-        if settings.USE_ELASTICSEARCH:
+        if ESManager.is_enabled():
             sort_param = current_cursor.get("sort", None)
-            async with ESManager(
-                index_name=settings.ES_INDEX_NAME
-            ) as es:
-                total, news, last_hit_sort = await es.search(
-                    query_string=query_string,
-                    categories=categories,
-                    channel_ids=channel_ids,
-                    limit=limit,
-                    search_after=sort_param,
-                    recent_first=recent_first,
-                )
-
-            new_cursor = None
-            if len(news) == limit:
-                new_cursor = CursorEncoder().encode_cursor(
-                    cursor={
-                        "sort": last_hit_sort,
-                        "offset": offset + len(news),
-                    }
-                )
-            return total, news, new_cursor, offset
+            try:
+                async with ESManager(
+                    index_name=settings.ES_INDEX_NAME
+                ) as es:
+                    total, news, last_hit_sort = await es.search(
+                        query_string=query_string,
+                        categories=categories,
+                        without_category=without_category,
+                        channel_ids=channel_ids,
+                        limit=limit,
+                        search_after=sort_param,
+                        recent_first=recent_first,
+                    )
+            except Exception:
+                ESManager.disable_runtime()
+            else:
+                new_cursor = None
+                if len(news) == limit:
+                    new_cursor = CursorEncoder().encode_cursor(
+                        cursor={
+                            "sort": last_hit_sort,
+                            "offset": offset + len(news),
+                        }
+                    )
+                return total, news, new_cursor, offset
 
         total, news_rows = await self.db.news.search_with_pagination(
             limit=limit,
             offset=offset,
             query_string=query_string,
             categories=categories,
+            without_category=without_category,
             channel_ids=channel_ids,
             recent_first=recent_first,
         )

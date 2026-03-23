@@ -166,12 +166,11 @@
             <p class="muted">Укажите Telegram ID для получения новостей.</p>
           </div>
         </div>
-        <div class="profile-layout">
-          <div class="panel profile-card">
-            <h3>Основная информация</h3>
+        <div class="profile-layout profile-layout-wide">
+          <div class="panel profile-card profile-summary-card">
             <div class="profile-info" id="profileInfo"></div>
           </div>
-          <form class="panel profile-card" id="profileForm">
+          <form class="panel profile-card profile-edit-card" id="profileForm">
             <h3>Редактировать</h3>
             <label class="field">
               <span>Имя</span>
@@ -197,14 +196,14 @@
               <p class="eyebrow">Администрирование</p>
               <h2>Единая панель управления Feed Fusion</h2>
               <p class="muted">
-                Все задачи администратора собраны на одной странице: управление каналами,
-                загрузка и разметка датасета, запуск обучения и мониторинг качества модели.
+                Все ключевые задачи администратора вынесены в отдельные секции:
+                каналы, датасеты и обучение модели.
               </p>
             </div>
             <div class="admin-overview-note">
               <span class="status-badge">Только для администратора</span>
               <p class="muted">
-                Сводки и графики строятся по данным, которые уже хранятся в БД.
+                Переключайтесь между разделами кнопками сверху и работайте только с нужным блоком.
               </p>
             </div>
           </section>
@@ -237,48 +236,34 @@
             </article>
           </div>
 
-          <section class="panel admin-section">
-            <div class="admin-section-head">
+          <div class="admin-tabbar" id="adminTabbar">
+            <button class="admin-tab is-active" type="button" data-admin-tab="channels">
+              Каналы
+            </button>
+            <button class="admin-tab" type="button" data-admin-tab="datasets">
+              Датасеты
+            </button>
+            <button class="admin-tab" type="button" data-admin-tab="training">
+              Обучение
+            </button>
+          </div>
+
+          <section class="panel admin-section" data-admin-panel="channels">
+            <div class="admin-section-head admin-section-head-actions">
               <div>
                 <h3>Каналы</h3>
-                <p class="muted">Создание, редактирование и поддержка RSS-источников.</p>
+                <p class="muted">RSS-каналы показаны сеткой. Добавление нового канала вынесено в модальное окно.</p>
               </div>
+              <button class="btn accent" type="button" id="openChannelModalBtn">Добавить канал</button>
             </div>
-            <div class="admin-section-grid admin-section-grid-channels">
-              <form class="panel admin-inner-panel form-card" id="channelCreateForm">
-                <h3>Добавить канал</h3>
-                <label class="field">
-                  <span>Название</span>
-                  <input type="text" name="title" required />
-                </label>
-                <label class="field">
-                  <span>RSS-ссылка</span>
-                  <input type="url" name="link" required placeholder="https://example.com/rss" />
-                </label>
-                <label class="field">
-                  <span>Описание</span>
-                  <textarea name="description" rows="3"></textarea>
-                </label>
-                <button class="btn accent" type="submit">Добавить</button>
-              </form>
-
-              <div class="panel admin-inner-panel admin-history-panel">
-                <div class="admin-list-head">
-                  <div>
-                    <h3>Каталог каналов</h3>
-                    <p class="muted">Изменения сохраняются сразу в текущую конфигурацию системы.</p>
-                  </div>
-                </div>
-                <div id="adminChannelList" class="stack admin-channel-stack"></div>
-              </div>
-            </div>
+            <div id="adminChannelList" class="admin-channel-grid"></div>
           </section>
 
-          <section class="panel admin-section">
+          <section class="panel admin-section" data-admin-panel="datasets" hidden>
             <div class="admin-section-head">
               <div>
-                <h3>Датасет и разметка</h3>
-                <p class="muted">Импорт CSV, ручная маркировка и контроль качества загрузок.</p>
+                <h3>Датасеты</h3>
+                <p class="muted">Импорт, история загрузок и ручная обратная связь вынесены в отдельные блоки.</p>
               </div>
             </div>
             <div class="admin-section-grid admin-section-grid-dataset">
@@ -299,27 +284,11 @@
                 </div>
               </form>
 
-              <form class="panel admin-inner-panel form-card" id="sampleLabelForm">
-                <h3>Ручная разметка</h3>
-                <p class="muted">
-                  Добавьте отдельную новость в обучающую выборку, если её нужно быстро доразметить.
-                </p>
-                <label class="field">
-                  <span>ID новости</span>
-                  <input type="number" id="sampleNewsId" min="1" required />
-                </label>
-                <label class="field">
-                  <span>Категория</span>
-                  <select id="sampleCategorySelect" required></select>
-                </label>
-                <button class="btn accent" type="submit">Добавить в выборку</button>
-              </form>
-
-              <div class="panel admin-inner-panel chart-panel">
+              <div class="panel admin-inner-panel chart-panel dataset-chart-panel">
                 <div class="chart-head">
                   <div>
-                    <h3>Динамика импортов</h3>
-                    <p class="muted">Сравнение успешных загрузок и ошибок по каждой сессии импорта.</p>
+                    <h3>Результат импортов</h3>
+                    <p class="muted">Гистограмма помогает сразу сравнить успешные загрузки и ошибки по каждой сессии.</p>
                   </div>
                 </div>
                 <canvas id="uploadChart" width="640" height="260" aria-label="График импортов датасета"></canvas>
@@ -335,17 +304,43 @@
                 </div>
                 <div id="uploadsList" class="stack compact-stack timeline-stack"></div>
               </div>
+
+              <form class="panel admin-inner-panel form-card dataset-feedback-panel" id="sampleLabelForm">
+                <h3>Фидбек администратора</h3>
+                <p class="muted">
+                  Если нужно быстро доразметить новость, добавьте её вручную в обучающую выборку.
+                </p>
+                <label class="field">
+                  <span>ID новости</span>
+                  <input type="number" id="sampleNewsId" min="1" required />
+                </label>
+                <label class="field">
+                  <span>Категория</span>
+                  <select id="sampleCategorySelect" required></select>
+                </label>
+                <button class="btn accent" type="submit">Добавить в выборку</button>
+              </form>
             </div>
           </section>
 
-          <section class="panel admin-section">
+          <section class="panel admin-section" data-admin-panel="training" hidden>
             <div class="admin-section-head">
               <div>
                 <h3>Обучение модели</h3>
-                <p class="muted">Запуск обучения, сравнение прогонов и детальный разбор метрик.</p>
+                <p class="muted">Лаконичная сводка, справка и графики метрик для выбранного запуска.</p>
               </div>
             </div>
             <div class="admin-section-grid admin-section-grid-training">
+              <div class="panel admin-inner-panel training-help-panel">
+                <h3>Как читать этот раздел</h3>
+                <ul class="admin-help-list">
+                  <li><strong>Запуск</strong> — стартует новую сессию обучения модели.</li>
+                  <li><strong>Accuracy</strong> — доля правильных ответов, чем выше, тем лучше.</li>
+                  <li><strong>Loss</strong> — ошибка модели, чем ниже, тем лучше.</li>
+                  <li><strong>История запусков</strong> — помогает сравнить последние обучения между собой.</li>
+                </ul>
+              </div>
+
               <div class="panel admin-inner-panel form-card">
                 <h3>Параметры запуска</h3>
                 <form id="trainModelForm" class="inline-form">
@@ -416,7 +411,7 @@
                 <div class="chart-head">
                   <div>
                     <h3>Accuracy по эпохам</h3>
-                    <p class="muted">Сравнение train и validation accuracy внутри выбранного прогона.</p>
+                    <p class="muted">Показывает, насколько модель улучшалась во время выбранного запуска.</p>
                   </div>
                 </div>
                 <canvas id="trainingChart" width="640" height="260" aria-label="График точности обучения"></canvas>
@@ -427,14 +422,14 @@
                 <div class="chart-head">
                   <div>
                     <h3>Loss по эпохам</h3>
-                    <p class="muted">Отслеживание train и validation loss для выбранного обучения.</p>
+                    <p class="muted">Показывает, насколько снижалась ошибка модели во время выбранного запуска.</p>
                   </div>
                 </div>
                 <canvas id="trainingLossChart" width="640" height="260" aria-label="График функции потерь"></canvas>
                 <p class="muted" id="trainingLossInfo">Выберите обучение для отображения метрик.</p>
               </div>
 
-              <div class="panel admin-inner-panel chart-panel">
+              <div class="panel admin-inner-panel chart-panel chart-panel-wide">
                 <div class="chart-head">
                   <div>
                     <h3>История качества модели</h3>
@@ -445,7 +440,7 @@
                 <p class="muted" id="trainingHistoryInfo">История обучений появится после первой сессии.</p>
               </div>
 
-              <div class="panel admin-inner-panel admin-history-panel">
+              <div class="panel admin-inner-panel admin-history-panel chart-panel-wide">
                 <div class="admin-list-head">
                   <div>
                     <h3>История запусков</h3>
@@ -458,6 +453,38 @@
           </section>
         </div>
       </section>
+
+      <div class="modal-backdrop" id="channelModal" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="channelModalTitle">
+          <div class="modal-head">
+            <div>
+              <p class="eyebrow">RSS-канал</p>
+              <h3 id="channelModalTitle">Новый канал</h3>
+            </div>
+            <button class="modal-close" type="button" id="closeChannelModalBtn" aria-label="Закрыть">
+              ×
+            </button>
+          </div>
+          <form class="inline-form" id="channelCreateForm">
+            <label class="field">
+              <span>Название</span>
+              <input type="text" name="title" required />
+            </label>
+            <label class="field">
+              <span>RSS-ссылка</span>
+              <input type="url" name="link" required placeholder="https://example.com/rss" />
+            </label>
+            <label class="field">
+              <span>Описание</span>
+              <textarea name="description" rows="4"></textarea>
+            </label>
+            <div class="actions modal-actions">
+              <button class="btn ghost" type="button" id="cancelChannelModalBtn">Отмена</button>
+              <button class="btn accent" type="submit">Сохранить канал</button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <section id="auth" class="view" data-view hidden>
         <div class="section-head">

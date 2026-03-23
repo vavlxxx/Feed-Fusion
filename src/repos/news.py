@@ -214,6 +214,7 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
         offset: int,
         query_string: str | None = None,
         categories=None,
+        without_category: bool = False,
         channel_ids=None,
         recent_first: bool = True,
     ) -> tuple[int, list[NewsDTO]]:
@@ -221,8 +222,17 @@ class NewsRepo(BaseRepo[News, NewsDTO]):
 
         if channel_ids:
             filters.append(self.model.channel_id.in_(channel_ids))
-        if categories:
+        if categories and without_category:
+            filters.append(
+                or_(
+                    self.model.category.in_(categories),
+                    self.model.category.is_(None),
+                )
+            )
+        elif categories:
             filters.append(self.model.category.in_(categories))
+        elif without_category:
+            filters.append(self.model.category.is_(None))
         if query_string:
             pattern = f"%{query_string.strip()}%"
             filters.append(

@@ -30,3 +30,17 @@ docker compose up postgres
 ```
 poetry run alembic upgrade head
 ```
+
+## Docker профили
+
+- Основной набор: `app`, `celery_worker`, `postgres`, `rabbitmq`
+- Опциональный поиск через Elasticsearch: `--profile search`
+- Опциональный telegram consumer: `--profile telegram`
+- Опциональный кэш в Redis: `--profile cache`
+
+Минимальный старт:
+
+```bash
+docker compose up --build
+```
+

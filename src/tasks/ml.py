@@ -29,6 +29,7 @@ from src.schemas.samples import (
 from src.schemas.enums import NewsCategory
 from src.tasks.app import celery_app
 from src.utils.db_tools import DBManager
+from src.utils.search_sync import sync_news_documents
 
 logger = logging.getLogger("src.tasks.ml")
 
@@ -319,6 +320,7 @@ async def assign_categories(
 
     async with DBManager(sessionmaker_null_pool) as db:
         updated = 0
+        documents_to_sync: list[dict] = []
         for news_obj in news:
             prediction = predictions_by_id.get(news_obj.id)
             if not prediction or not prediction.category:
@@ -336,6 +338,12 @@ async def assign_categories(
 
             to_update = NewsUpdateDTO(category=category)
             await db.news.edit(to_update, id=news_obj.id)
+            documents_to_sync.append(
+                {
+                    **news_obj.model_dump(mode="json"),
+                    "category": category.value,
+                }
+            )
             logger.debug(
                 "Assigned category '%s' to news_id '%d'",
                 to_update.category.value,  # pyright: ignore
@@ -343,6 +351,10 @@ async def assign_categories(
             )
             updated += 1
         await db.commit()
+        await sync_news_documents(
+            documents_to_sync,
+            refresh=True,
+        )
         logger.info(
             "Assigned categories to %d of %d news items",
             updated,

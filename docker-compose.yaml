@@ -17,7 +17,8 @@ services:
         condition: service_healthy
     command: "poetry run python ./src/gunicorn/run.py"
     volumes:
-      - ./src/data:/app/data
+      - ./src/data:/app/src/data
+      - ./artifacts:/app/artifacts
       - ./logs:/app/logs
       - ./src/static:/app/src/static
     # cpus: 1.0

@@ -15,9 +15,23 @@ logger = logging.getLogger("src.utils.es_manager")
 
 
 class ESManager:
+    _runtime_enabled: bool = True
+
     def __init__(self, index_name: str):
         self._dsn: str = settings.get_elasticsearch_url
         self._index: str = index_name
+
+    @classmethod
+    def is_enabled(cls) -> bool:
+        return settings.USE_ELASTICSEARCH and cls._runtime_enabled
+
+    @classmethod
+    def disable_runtime(cls) -> None:
+        cls._runtime_enabled = False
+
+    @classmethod
+    def enable_runtime(cls) -> None:
+        cls._runtime_enabled = True
 
     async def connection_is_stable(self) -> bool:
         if getattr(self, "_client", None) is None:
@@ -33,15 +47,21 @@ class ESManager:
                 retry_on_timeout=True,
             )
             if not await self.connection_is_stable():
-                raise ConnectionError
+                raise ConnectionError(
+                    "Elasticsearch ping failed."
+                )
 
         except Exception as e:
             logger.error(
                 "Failed to connect to Elasticsearch: %s", e
             )
-            await self._client.close()
+            self.disable_runtime()
+            client = getattr(self, "_client", None)
+            if client is not None:
+                await client.close()
             raise
 
+        self.enable_runtime()
         logger.info("Successfully connected to Elasticsearch...")
         await self._create_index()
         return self
@@ -61,6 +81,10 @@ class ESManager:
                 e,
             )
             raise
+
+    async def recreate_index(self) -> None:
+        await self.delete_index(index_name=self._index)
+        await self._create_index()
 
     async def _create_index(self):
         if await self._client.indices.exists(index=self._index):
@@ -173,17 +197,36 @@ class ESManager:
             )
             raise
 
-    async def add(self, data: list[dict]) -> ObjectApiResponse:
+    async def add(
+        self,
+        data: list[dict],
+        refresh: bool = False,
+    ) -> ObjectApiResponse | None:
+        if not data:
+            return None
+
         operations = []
         for item in data:
-            operations.append({"index": {"_index": self._index}})
+            news_id = item.get("id")
+            if news_id is None:
+                raise ValueError(
+                    "Each Elasticsearch document must contain 'id'."
+                )
+            operations.append(
+                {
+                    "index": {
+                        "_index": self._index,
+                        "_id": str(news_id),
+                    }
+                }
+            )
             operations.append(item)
 
         try:
             response = await self._client.bulk(
                 index=self._index,
                 operations=operations,
-                refresh=False,
+                refresh="wait_for" if refresh else False,
             )
         except Exception as e:
             logger.error(
@@ -213,6 +256,7 @@ class ESManager:
         limit: int,
         query_string: str | None = None,
         categories: list[NewsCategory] | None = None,
+        without_category: bool = False,
         channel_ids: list[int] | None = None,
         search_after: list | None = None,
         recent_first: bool = True,
@@ -271,7 +315,34 @@ class ESManager:
                 }
             )
 
-        if categories:
+        if categories and without_category:
+            filter_clauses.append(
+                {
+                    "bool": {
+                        "should": [
+                            {
+                                "terms": {
+                                    "category": [
+                                        str(category.value)
+                                        for category in categories
+                                    ]
+                                }
+                            },
+                            {
+                                "bool": {
+                                    "must_not": {
+                                        "exists": {
+                                            "field": "category"
+                                        }
+                                    }
+                                }
+                            },
+                        ],
+                        "minimum_should_match": 1,
+                    }
+                }
+            )
+        elif categories:
             filter_clauses.append(
                 {
                     "terms": {
@@ -279,6 +350,18 @@ class ESManager:
                             str(category.value)
                             for category in categories
                         ]
+                    }
+                }
+            )
+        elif without_category:
+            filter_clauses.append(
+                {
+                    "bool": {
+                        "must_not": {
+                            "exists": {
+                                "field": "category"
+                            }
+                        }
                     }
                 }
             )

@@ -24,10 +24,10 @@ from src.schemas.auth import UserRegisterDTO
 from src.services.auth import AuthService
 from src.tasks.ml import retrain_model
 from src.utils.db_tools import DBHealthChecker, DBManager
-from src.utils.es_manager import ESManager
 from src.utils.exceptions import UserExistsError
 from src.utils.log_config import configurate_logging, get_logger
 from src.utils.redis_manager import redis_manager
+from src.utils.search_sync import rebuild_search_index
 
 
 @asynccontextmanager
@@ -35,14 +35,22 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     logger = get_logger("src")
 
     if settings.USE_REDIS_CACHE:
-        await redis_manager.connect()
-        logger.info("Successfully connected to Redis!")
-
-        FastAPICache.init(
-            RedisBackend(redis_manager.redis),
-            prefix="fastapi-cache",
-        )
-        logger.info("FastAPI Cache has been initialized!")
+        try:
+            await redis_manager.connect()
+            logger.info("Successfully connected to Redis!")
+            FastAPICache.init(
+                RedisBackend(redis_manager.redis),
+                prefix="fastapi-cache",
+            )
+            logger.info("FastAPI Cache has been initialized!")
+        except Exception as exc:
+            FastAPICache.init(
+                InMemoryBackend(), prefix="fastapi-cache"
+            )
+            logger.warning(
+                "Redis unavailable, using in-memory cache: %s",
+                exc,
+            )
     else:
         FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
         logger.info(
@@ -69,31 +77,37 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
             model_exists = NewsClassifierService.model_exists()
             if not model_exists:
                 logger.info("Classificator model is not exists...")
-                logger.info("Starting dataset uploading...")
-                samples = load_samples_from_csv(
-                    settings.TRAIN_DATASET_LOCATION
-                )
-                await db.denorm_news.delete_all()
-                await db.denorm_news.add_bulk(samples)
-                await db.commit()
-                logger.info("Successfully uploaded dataset...")
+                existing_samples = await db.denorm_news.get_all()
+                if not existing_samples:
+                    logger.info(
+                        "Training dataset is empty, loading bootstrap dataset..."
+                    )
+                    samples = load_samples_from_csv(
+                        settings.TRAIN_DATASET_LOCATION
+                    )
+                    await db.denorm_news.add_bulk(samples)
+                    await db.commit()
+                    logger.info(
+                        "Successfully uploaded bootstrap dataset..."
+                    )
+                else:
+                    logger.info(
+                        "Training samples already exist, skipping bootstrap import."
+                    )
 
                 logger.info("Initiating ML model retraining...")
                 retrain_model.delay()  # pyright: ignore
 
     if settings.USE_ELASTICSEARCH:
-        async with ESManager(
-            index_name=settings.ES_INDEX_NAME
-        ) as es:
-            await es.connection_is_stable()
-            logger.info("Successfully connected to Elasticsearch!")
-            if settings.ES_RESET_INDEX:
-                await es.delete_index(
-                    index_name=settings.ES_INDEX_NAME
-                )
-                logger.info(
-                    "Deleted old index: %s", settings.ES_INDEX_NAME
-                )
+        synced = await rebuild_search_index(
+            reset_index=settings.ES_RESET_INDEX
+        )
+        if synced:
+            logger.info("Elasticsearch is ready for search.")
+        else:
+            logger.warning(
+                "Elasticsearch unavailable, using PostgreSQL fallback for news queries."
+            )
     else:
         logger.info(
             "Elasticsearch disabled: using PostgreSQL fallback for news queries."
@@ -128,7 +142,9 @@ STATIC_DIR = Path(__file__).parent / "static"
 INDEX_FILE = STATIC_DIR / "index.html"
 
 app.mount(
-    "/static", StaticFiles(directory=STATIC_DIR), name="static"
+    "/static",
+    StaticFiles(directory=STATIC_DIR),
+    name="static",
 )
 
 

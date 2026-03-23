@@ -1,5 +1,5 @@
 ﻿const API_BASE = "/api/v1";
-const PLACEHOLDER_IMAGE = "https://placehold.co/600x400";
+const PLACEHOLDER_IMAGE = "/static/img/600x400.svg";
 const API_ENDPOINTS = {
   auth: "/auth/",
   channels: "/channels/",
@@ -9,6 +9,7 @@ const API_ENDPOINTS = {
   trainings: "/trainings/",
 };
 const ACCESS_TOKEN_KEY = "ff_access_token";
+const UNCATEGORIZED_FILTER = "__uncategorized__";
 const NEWS_CATEGORIES = [
   { value: "Международные отношения", label: "Мир" },
   { value: "Культура", label: "Культура" },
@@ -34,6 +35,7 @@ const state = {
   uploads: [],
   trainings: [],
   selectedTrainingId: null,
+  adminTab: "channels",
   filters: {
     query: "",
     channelIds: [],
@@ -94,6 +96,13 @@ const dom = {
   adminStatTrainings: document.getElementById("adminStatTrainings"),
   adminStatActiveTrainings: document.getElementById("adminStatActiveTrainings"),
   adminStatBestAccuracy: document.getElementById("adminStatBestAccuracy"),
+  adminTabbar: document.getElementById("adminTabbar"),
+  adminTabs: document.querySelectorAll("[data-admin-tab]"),
+  adminPanels: document.querySelectorAll("[data-admin-panel]"),
+  openChannelModalBtn: document.getElementById("openChannelModalBtn"),
+  channelModal: document.getElementById("channelModal"),
+  closeChannelModalBtn: document.getElementById("closeChannelModalBtn"),
+  cancelChannelModalBtn: document.getElementById("cancelChannelModalBtn"),
   uploadChart: document.getElementById("uploadChart"),
   uploadChartInfo: document.getElementById("uploadChartInfo"),
   trainingChart: document.getElementById("trainingChart"),
@@ -257,6 +266,31 @@ function showView(route) {
   updateNavActive(route);
 }
 
+function setAdminTab(tab) {
+  const available = new Set(["channels", "datasets", "training"]);
+  state.adminTab = available.has(tab) ? tab : "channels";
+
+  dom.adminTabs.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.adminTab === state.adminTab);
+  });
+
+  dom.adminPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.adminPanel !== state.adminTab;
+  });
+}
+
+function openChannelModal() {
+  if (!dom.channelModal) return;
+  dom.channelModal.hidden = false;
+  document.body.classList.add("modal-open");
+}
+
+function closeChannelModal() {
+  if (!dom.channelModal) return;
+  dom.channelModal.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+
 function requireAuth(route) {
   const adminRoutes = ["admin", "admin-channels", "admin-samples", "admin-training"];
   if (!state.user) {
@@ -410,14 +444,25 @@ function renderConfigChips(config) {
   });
 }
 
+function getSelectedCategoryFilter(selectedValues = state.filters.categories) {
+  const selected = Array.isArray(selectedValues) ? selectedValues : [];
+  return {
+    categories: selected.filter((value) => value !== UNCATEGORIZED_FILTER),
+    withoutCategory: selected.includes(UNCATEGORIZED_FILTER),
+  };
+}
+
 function getCategoryLabel(value) {
+  if (value === UNCATEGORIZED_FILTER || value === null || value === undefined || value === "") {
+    return "Без категории";
+  }
   const item = NEWS_CATEGORIES.find((entry) => entry.value === value);
   return item?.label || value || "Без категории";
 }
 
 function updateActiveCategoriesChip() {
   if (!dom.activeCategories) return;
-  const selected = state.filters.categories;
+  const selected = state.filters.categories || [];
   if (!selected || selected.length === 0) {
     dom.activeCategories.textContent = "Все категории";
     return;
@@ -432,6 +477,24 @@ function updateActiveCategoriesChip() {
 function renderCategorySelect() {
   if (!dom.categoryDropdown) return;
   dom.categoryDropdown.innerHTML = "";
+
+  const uncategorizedLabel = document.createElement("label");
+  uncategorizedLabel.className = "channel-item";
+
+  const uncategorizedCheckbox = document.createElement("input");
+  uncategorizedCheckbox.type = "checkbox";
+  uncategorizedCheckbox.value = UNCATEGORIZED_FILTER;
+  uncategorizedCheckbox.checked = state.filters.categories.includes(UNCATEGORIZED_FILTER);
+  uncategorizedCheckbox.addEventListener("change", () => {
+    updateCategoryToggle();
+  });
+
+  const uncategorizedText = document.createElement("span");
+  uncategorizedText.textContent = "Без категории";
+
+  uncategorizedLabel.appendChild(uncategorizedCheckbox);
+  uncategorizedLabel.appendChild(uncategorizedText);
+  dom.categoryDropdown.appendChild(uncategorizedLabel);
 
   NEWS_CATEGORIES.forEach((category) => {
     const label = document.createElement("label");
@@ -658,6 +721,105 @@ function renderLineChart({
   }
 }
 
+function renderBarChart({
+  canvas,
+  infoNode,
+  labels,
+  series,
+  emptyMessage,
+  infoText,
+  valueFormatter = (value) => String(value),
+}) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const normalizedSeries = (series || []).map((item) => ({
+    ...item,
+    values: Array.isArray(item.values) ? item.values : [],
+  }));
+  const maxValue = Math.max(
+    0,
+    ...normalizedSeries.flatMap((item) => item.values.map((value) => Number(value) || 0))
+  );
+
+  if (!labels?.length || maxValue <= 0) {
+    clearCanvasChart(canvas, infoNode, emptyMessage);
+    return;
+  }
+
+  const width = canvas.width;
+  const height = canvas.height;
+  const padding = { left: 48, right: 18, top: 24, bottom: 42 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const groupWidth = plotWidth / labels.length;
+  const barWidth = Math.min(26, groupWidth / (normalizedSeries.length + 1));
+  const yMax = maxValue * 1.12 || 1;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#f7fbfa";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = "#d9e8e4";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i += 1) {
+    const y = padding.top + (plotHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#97b8b2";
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, height - padding.bottom);
+  ctx.lineTo(width - padding.right, height - padding.bottom);
+  ctx.stroke();
+
+  ctx.fillStyle = "#5f7572";
+  ctx.font = '11px "Golos Text", sans-serif';
+  ctx.textAlign = "right";
+  for (let i = 0; i <= 4; i += 1) {
+    const value = yMax - (yMax / 4) * i;
+    const y = padding.top + (plotHeight / 4) * i + 4;
+    ctx.fillText(valueFormatter(Math.max(0, value)), padding.left - 8, y);
+  }
+
+  ctx.textAlign = "center";
+  const labelStep = Math.max(1, Math.ceil(labels.length / 6));
+  labels.forEach((label, index) => {
+    const isEdge = index === 0 || index === labels.length - 1;
+    if (!isEdge && index % labelStep !== 0) return;
+    const groupX = padding.left + groupWidth * index + groupWidth / 2;
+    ctx.fillText(String(label), groupX, height - 12);
+  });
+
+  normalizedSeries.forEach((item, seriesIndex) => {
+    item.values.forEach((value, index) => {
+      const safeValue = Number(value) || 0;
+      const barHeight = (safeValue / yMax) * plotHeight;
+      const groupStart = padding.left + groupWidth * index;
+      const offset =
+        (groupWidth - normalizedSeries.length * barWidth) / 2 + seriesIndex * barWidth;
+      const x = groupStart + offset;
+      const y = height - padding.bottom - barHeight;
+
+      ctx.fillStyle = item.color;
+      ctx.fillRect(x, y, barWidth - 4, barHeight);
+    });
+  });
+
+  normalizedSeries.forEach((item, index) => {
+    drawChartLegend(ctx, padding.left + index * 150, padding.top - 6, item.color, item.label);
+  });
+
+  if (infoNode) {
+    infoNode.textContent = infoText;
+  }
+}
+
 function renderTrainingChart(training) {
   if (!training) {
     clearTrainingChart();
@@ -710,10 +872,13 @@ function renderTrainingLossChart(training) {
 function renderTrainingHistoryChart() {
   const sorted = [...state.trainings].sort((a, b) => Number(a.id) - Number(b.id));
   const points = sorted
-    .map((training) => ({
-      x: Number(training.id),
-      y: Number(getTrainingBestAccuracy(training)),
-    }))
+    .map((training) => {
+      const bestAccuracy = getTrainingBestAccuracy(training);
+      return {
+        x: Number(training.id),
+        y: typeof bestAccuracy === "number" ? bestAccuracy : Number.NaN,
+      };
+    })
     .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
 
   const bestTraining = [...state.trainings]
@@ -737,33 +902,24 @@ function renderTrainingHistoryChart() {
 
 function renderUploadChart() {
   const sorted = [...state.uploads].sort((a, b) => Number(a.id) - Number(b.id));
-  const uploadPoints = sorted
-    .map((item) => ({
-      x: Number(item.id),
-      y: Number(item.uploads),
-    }))
-    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
-  const errorPoints = sorted
-    .map((item) => ({
-      x: Number(item.id),
-      y: Number(item.errors),
-    }))
-    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+  const labels = sorted.map((item) => item.id);
+  const uploadValues = sorted.map((item) => Number(item.uploads) || 0);
+  const errorValues = sorted.map((item) => Number(item.errors) || 0);
 
   const totalUploads = state.uploads.reduce((sum, item) => sum + Number(item.uploads || 0), 0);
   const totalErrors = state.uploads.reduce((sum, item) => sum + Number(item.errors || 0), 0);
 
-  renderLineChart({
+  renderBarChart({
     canvas: dom.uploadChart,
     infoNode: dom.uploadChartInfo,
+    labels,
     series: [
-      { label: "Успешно", color: "#1f6d63", points: uploadPoints },
-      { label: "Ошибки", color: "#c96835", points: errorPoints },
+      { label: "Успешно", color: "#1f6d63", values: uploadValues },
+      { label: "Ошибки", color: "#c96835", values: errorValues },
     ],
     emptyMessage: "История импортов пока отсутствует.",
     infoText: `Загружено: ${formatNumber(totalUploads)}, ошибок: ${formatNumber(totalErrors)}`,
     valueFormatter: (value) => formatNumber(Math.round(value)),
-    fixedMin: 0,
   });
 }
 
@@ -842,22 +998,22 @@ function renderTrainingSnapshot(training) {
   const lastVal = getLastMetricPoint(training.metrics, "val");
   const bestAccuracy = getTrainingBestAccuracy(training);
   const detailItems = [
-    ["ID обучения", `#${training.id}`],
-    ["Устройство", formatScalar(training.device)],
-    ["Epochs", formatScalar(training.config?.epochs ?? trainRows.length)],
-    ["Лучшая accuracy", Number.isFinite(bestAccuracy) ? formatPercent(bestAccuracy) : "n/a"],
-    ["Последняя train accuracy", lastTrain ? formatPercent(lastTrain.accuracy) : "n/a"],
-    ["Последняя val accuracy", lastVal ? formatPercent(lastVal.accuracy) : "n/a"],
-    ["Создано", formatDate(training.created_at) || "—"],
-    ["Обновлено", formatDate(training.updated_at) || "—"],
+    ["Запуск", `#${training.id}`],
+    ["Где обучалось", formatScalar(training.device)],
+    ["Эпох", formatScalar(training.config?.epochs ?? trainRows.length)],
+    ["Лучший результат", Number.isFinite(bestAccuracy) ? formatPercent(bestAccuracy) : "n/a"],
+    ["Текущее train", lastTrain ? formatPercent(lastTrain.accuracy) : "n/a"],
+    ["Текущее validation", lastVal ? formatPercent(lastVal.accuracy) : "n/a"],
+    ["Старт", formatDate(training.created_at) || "—"],
+    ["Обновление", formatDate(training.updated_at) || "—"],
   ];
 
   dom.trainingSnapshotTitle.textContent = `Обучение #${training.id}`;
   setStatusBadge(dom.trainingSnapshotState, training.in_progress ? "В процессе" : "Завершено", training.in_progress ? "live" : "idle");
   dom.trainingSnapshotMeta.textContent =
     valRows.length > 0
-      ? `Зафиксировано ${trainRows.length} train-эпох и ${valRows.length} val-эпох.`
-      : `Зафиксировано ${trainRows.length} train-эпох. Валидационные метрики отсутствуют.`;
+      ? `Сохранено ${trainRows.length} шагов обучения и ${valRows.length} шагов проверки качества.`
+      : `Сохранено ${trainRows.length} шагов обучения. Проверочные метрики пока не записаны.`;
   renderDetailCards(dom.trainingDetails, detailItems, "Параметры запуска будут показаны здесь.");
   renderConfigChips(training.config);
   if (dom.trainingDetailsText) {
@@ -1180,8 +1336,12 @@ async function loadNews({ reset = false } = {}) {
   if (state.filters.channelIds.length > 0) {
     state.filters.channelIds.forEach((id) => params.append("channel_ids", id));
   }
-  if (state.filters.categories.length > 0) {
-    state.filters.categories.forEach((value) => params.append("categories", value));
+  const categoryFilter = getSelectedCategoryFilter(state.filters.categories);
+  if (categoryFilter.categories.length > 0) {
+    categoryFilter.categories.forEach((value) => params.append("categories", value));
+  }
+  if (categoryFilter.withoutCategory) {
+    params.set("without_category", "true");
   }
   if (!reset && state.newsCursor) params.set("search_after", state.newsCursor);
 
@@ -1224,16 +1384,29 @@ function renderNews(items, append = false) {
     title.className = "news-title";
     title.textContent = item.title || "Без названия";
 
-    const summary = document.createElement("p");
-    summary.className = "news-summary";
+    const channelName = state.channelMap.get(item.channel_id)?.title || `Канал #${item.channel_id}`;
+    const sourceName = item.source || channelName;
     const summaryText = truncate(item.summary || "", 180);
-    summary.textContent = summaryText ? summaryText : "Отсутствует";
 
     const meta = document.createElement("div");
     meta.className = "news-meta";
-    const channelName = state.channelMap.get(item.channel_id)?.title || `Канал #${item.channel_id}`;
-    const categoryLabel = getCategoryLabel(item.category);
-    meta.textContent = `ID: ${item.id} · Источник: ${item.source || channelName} · ${categoryLabel} · ${formatDate(item.published)}`;
+    meta.textContent = `ID: ${item.id} · Источник: ${sourceName}`;
+
+    const category = document.createElement("span");
+    category.className = "news-category";
+    category.textContent = getCategoryLabel(item.category);
+
+    const infoRow = document.createElement("div");
+    infoRow.className = "news-info-row";
+    infoRow.appendChild(category);
+
+    const summary = document.createElement("p");
+    summary.className = "news-summary";
+    summary.textContent = summaryText;
+
+    const published = document.createElement("p");
+    published.className = "news-published";
+    published.textContent = formatDate(item.published);
 
     const actions = document.createElement("div");
     actions.className = "news-actions";
@@ -1252,9 +1425,13 @@ function renderNews(items, append = false) {
     const body = document.createElement("div");
     body.className = "news-body";
 
+    body.appendChild(infoRow);
     body.appendChild(meta);
     body.appendChild(title);
-    body.appendChild(summary);
+    if (summaryText) {
+      body.appendChild(summary);
+    }
+    body.appendChild(published);
     body.appendChild(actions);
 
     card.appendChild(imgContainer);
@@ -1382,22 +1559,58 @@ function renderProfile() {
   dom.profileInfo.innerHTML = "";
   if (!state.user) return;
 
-  const items = [
-    ["Пользователь", state.user.username],
-    ["Роль", state.user.role],
-    ["Имя", state.user.first_name || "—"],
-    ["Фамилия", state.user.last_name || "—"],
-    ["Telegram ID", state.user.telegram_id || "—"],
-  ];
+  const wrapper = document.createElement("div");
+  wrapper.className = "profile-summary";
 
-  items.forEach(([label, value]) => {
-    const row = document.createElement("div");
-    const labelEl = document.createElement("span");
-    labelEl.textContent = `${label}: `;
-    row.appendChild(labelEl);
-    row.appendChild(document.createTextNode(value));
-    dom.profileInfo.appendChild(row);
-  });
+  const avatarWrap = document.createElement("div");
+  avatarWrap.className = "profile-avatar";
+  const avatar = document.createElement("img");
+  avatar.src = PLACEHOLDER_IMAGE;
+  avatar.alt = state.user.username || "Профиль";
+  avatarWrap.appendChild(avatar);
+
+  const content = document.createElement("div");
+  content.className = "profile-summary-content";
+
+  const username = document.createElement("p");
+  username.className = "profile-username";
+  username.textContent = `@${state.user.username || "user"}`;
+
+  const displayName = document.createElement("h3");
+  displayName.className = "profile-display-name";
+  displayName.textContent = state.user.username || "—";
+
+  const badges = document.createElement("div");
+  badges.className = "profile-badges";
+
+  const roleBadge = document.createElement("span");
+  roleBadge.className = "profile-badge";
+  roleBadge.textContent = state.user.role || "user";
+
+  const telegramBadge = document.createElement("span");
+  telegramBadge.className = "profile-badge";
+  telegramBadge.textContent = `Telegram ID: ${state.user.telegram_id || "—"}`;
+
+  badges.appendChild(roleBadge);
+  badges.appendChild(telegramBadge);
+
+  const firstName = document.createElement("p");
+  firstName.className = "profile-line";
+  firstName.textContent = state.user.first_name || "—";
+
+  const lastName = document.createElement("p");
+  lastName.className = "profile-line";
+  lastName.textContent = state.user.last_name || "—";
+
+  content.appendChild(username);
+  content.appendChild(displayName);
+  content.appendChild(badges);
+  content.appendChild(firstName);
+  content.appendChild(lastName);
+
+  wrapper.appendChild(avatarWrap);
+  wrapper.appendChild(content);
+  dom.profileInfo.appendChild(wrapper);
 
   if (dom.profileForm) {
     dom.profileForm.first_name.value = state.user.first_name || "";
@@ -1427,14 +1640,39 @@ function renderAdminChannels() {
   [...state.channels]
     .sort((a, b) => String(a.title).localeCompare(String(b.title), "ru"))
     .forEach((channel) => {
-      const wrapper = document.createElement("div");
-      wrapper.className = "panel admin-card";
+      const wrapper = document.createElement("article");
+      wrapper.className = "admin-channel-card";
 
+      const head = document.createElement("div");
+      head.className = "admin-channel-card-head";
+
+      const titleWrap = document.createElement("div");
       const title = document.createElement("h3");
-      title.textContent = `${channel.title} (#${channel.id})`;
+      title.textContent = channel.title;
+
+      const meta = document.createElement("p");
+      meta.className = "muted";
+      meta.textContent = `ID: ${channel.id}`;
+
+      titleWrap.appendChild(title);
+      titleWrap.appendChild(meta);
+
+      const rssLink = document.createElement("a");
+      rssLink.href = channel.link;
+      rssLink.target = "_blank";
+      rssLink.rel = "noopener";
+      rssLink.className = "btn ghost";
+      rssLink.textContent = "Открыть RSS";
+
+      head.appendChild(titleWrap);
+      head.appendChild(rssLink);
+
+      const desc = document.createElement("p");
+      desc.className = "muted";
+      desc.textContent = channel.description || "Описание не указано.";
 
       const form = document.createElement("form");
-      form.className = "inline-form";
+      form.className = "inline-form admin-channel-form";
 
       const titleField = buildField("Название", "title", channel.title);
       const linkField = buildField("RSS-ссылка", "link", channel.link, "url");
@@ -1482,7 +1720,8 @@ function renderAdminChannels() {
         await updateChannel(channel.id, payload);
       });
 
-      wrapper.appendChild(title);
+      wrapper.appendChild(head);
+      wrapper.appendChild(desc);
       wrapper.appendChild(form);
       fragment.appendChild(wrapper);
     });
@@ -1740,8 +1979,35 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeChannelDropdown();
       closeCategoryDropdown();
+      closeChannelModal();
     }
   });
+
+  dom.adminTabs.forEach((button) => {
+    button.addEventListener("click", () => {
+      setAdminTab(button.dataset.adminTab);
+    });
+  });
+
+  if (dom.openChannelModalBtn) {
+    dom.openChannelModalBtn.addEventListener("click", openChannelModal);
+  }
+
+  if (dom.closeChannelModalBtn) {
+    dom.closeChannelModalBtn.addEventListener("click", closeChannelModal);
+  }
+
+  if (dom.cancelChannelModalBtn) {
+    dom.cancelChannelModalBtn.addEventListener("click", closeChannelModal);
+  }
+
+  if (dom.channelModal) {
+    dom.channelModal.addEventListener("click", (event) => {
+      if (event.target === dom.channelModal) {
+        closeChannelModal();
+      }
+    });
+  }
 
   dom.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1836,6 +2102,7 @@ function bindEvents() {
       });
       showToast("Канал добавлен.");
       dom.channelCreateForm.reset();
+      closeChannelModal();
       await loadChannels();
     } catch (error) {
       showToast(error.message);
@@ -1920,9 +2187,18 @@ async function handleRoute() {
     "admin-samples": "admin",
     "admin-training": "admin",
   };
+  const adminTabByRoute = {
+    admin: state.adminTab || "channels",
+    "admin-channels": "channels",
+    "admin-samples": "datasets",
+    "admin-training": "training",
+  };
   const normalizedRoute = routeAliases[rawRoute] || rawRoute;
   const availableRoutes = new Set(Array.from(dom.views).map((view) => view.id));
   const route = availableRoutes.has(normalizedRoute) ? normalizedRoute : "news";
+  if (normalizedRoute === "admin") {
+    setAdminTab(adminTabByRoute[rawRoute] || state.adminTab);
+  }
   if (route !== rawRoute) {
     location.hash = `#/${route}`;
     return;
@@ -1955,6 +2231,7 @@ async function bootstrap() {
   bindEvents();
   renderCategorySelect();
   fillCategorySelect(dom.sampleCategorySelect);
+  setAdminTab(state.adminTab);
   updateActiveCategoriesChip();
   clearTrainingChart();
   clearCanvasChart(dom.trainingLossChart, dom.trainingLossInfo, "Выберите обучение для отображения loss.");

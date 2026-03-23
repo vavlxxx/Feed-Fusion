@@ -77,17 +77,25 @@ async def save_news(self, news_items: list[ParsedNewsDTO]):
             await db.rollback()
             raise self.retry(exc=exc, countdown=retry_countdown)
 
-        if not settings.USE_ELASTICSEARCH:
+        if not ESManager.is_enabled():
             logger.info(
                 "Elasticsearch disabled, skipping indexing."
             )
             return
 
         logger.info("Started indexing news in Elasticsearch...")
-        async with ESManager(
-            index_name=settings.ES_INDEX_NAME
-        ) as es:
-            data_dict: list[dict] = [
-                obj.model_dump() for obj in inserted_news
-            ]
-            await es.add(data=data_dict)
+        try:
+            async with ESManager(
+                index_name=settings.ES_INDEX_NAME
+            ) as es:
+                data_dict: list[dict] = [
+                    obj.model_dump(mode="json")
+                    for obj in inserted_news
+                ]
+                await es.add(data=data_dict)
+        except Exception as exc:
+            ESManager.disable_runtime()
+            logger.warning(
+                "Failed to index news in Elasticsearch: %s",
+                exc,
+            )
